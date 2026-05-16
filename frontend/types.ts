@@ -47,6 +47,7 @@ export interface Product {
   farmer_longitude?: number;
   name: string;
   egg_type?: string; 
+  egg_size?: string;
   description: string;
   price_per_tray: number;
   stock_tray: number;

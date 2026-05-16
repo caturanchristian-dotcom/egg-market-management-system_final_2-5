@@ -46,6 +46,7 @@ export default function Marketplace() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
   const [selectedEggType, setSelectedEggType] = useState<string>('all');
+  const [selectedEggSize, setSelectedEggSize] = useState<string>('all');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   
@@ -126,6 +127,7 @@ export default function Marketplace() {
 
   // Derive unique filter lists from product data for the dropdowns
   const eggTypes = Array.from(new Set(products.map(p => p.egg_type).filter(Boolean))) as string[];
+  const eggSizes = Array.from(new Set(products.map(p => p.egg_size).filter(Boolean))) as string[];
   const suppliers = Array.from(new Set(products.map(p => p.farmer_name).filter(Boolean))) as string[];
 
   /**
@@ -136,8 +138,9 @@ export default function Marketplace() {
                          p.farmer_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || p.category_id === selectedCategory;
     const matchesEggType = selectedEggType === 'all' || p.egg_type === selectedEggType;
+    const matchesEggSize = selectedEggSize === 'all' || p.egg_size === selectedEggSize;
     const matchesSupplier = selectedSupplier === 'all' || p.farmer_name === selectedSupplier;
-    return matchesSearch && matchesCategory && matchesEggType && matchesSupplier;
+    return matchesSearch && matchesCategory && matchesEggType && matchesEggSize && matchesSupplier;
   });
 
   /**
@@ -237,6 +240,20 @@ export default function Marketplace() {
                   <option value="all">Egg Types</option>
                   {eggTypes.map(type => (
                     <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={16} />
+                <select 
+                  value={selectedEggSize}
+                  onChange={(e) => setSelectedEggSize(e.target.value)}
+                  className="pl-9 pr-8 py-2 text-sm bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none transition-all"
+                >
+                  <option value="all">Egg Sizes</option>
+                  {eggSizes.map(size => (
+                    <option key={size} value={size}>{size}</option>
                   ))}
                 </select>
               </div>
@@ -351,7 +368,14 @@ export default function Marketplace() {
                     </div>
                     <div className="p-4 md:p-6">
                       <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-bold text-emerald-900 text-base md:text-lg">{product.name}</h3>
+                        <div>
+                          <h3 className="font-bold text-emerald-900 text-base md:text-lg">{product.name}</h3>
+                          {product.egg_size && (
+                            <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase">
+                              {product.egg_size}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-right">
                           <span className="text-emerald-600 font-bold text-sm md:text-base">
                             ₱{Number(product.price_per_tray).toFixed(2)}
@@ -491,6 +515,9 @@ export default function Marketplace() {
                               {item.product.egg_type && (
                                 <span className="text-[9px] md:text-[10px] text-emerald-500 italic">{item.product.egg_type}</span>
                               )}
+                              {item.product.egg_size && (
+                                <span className="bg-emerald-50 text-emerald-700 text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">{item.product.egg_size}</span>
+                              )}
                               <span className="bg-emerald-100 text-emerald-700 text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">tray</span>
                             </div>
                           </div>
@@ -610,6 +637,20 @@ export default function Marketplace() {
                     <option value="all">All Types</option>
                     {eggTypes.map(type => (
                       <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Egg Size</label>
+                  <select 
+                    value={selectedEggSize}
+                    onChange={(e) => setSelectedEggSize(e.target.value)}
+                    className="w-full px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  >
+                    <option value="all">All Sizes</option>
+                    {eggSizes.map(size => (
+                      <option key={size} value={size}>{size}</option>
                     ))}
                   </select>
                 </div>

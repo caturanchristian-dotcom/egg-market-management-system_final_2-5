@@ -156,6 +156,7 @@ async function startServer() {
       farmer_id INT NOT NULL,
       name VARCHAR(255) NOT NULL,
       egg_type VARCHAR(255),
+      egg_size VARCHAR(50),
       description TEXT,
       price DECIMAL(10,2) NOT NULL,
       price_per_tray DECIMAL(10,2),
@@ -246,6 +247,17 @@ async function startServer() {
     const orderItemColumns = await db.query('SHOW COLUMNS FROM order_items');
     const orderItemColumnNames = orderItemColumns.map((c: any) => (c.Field || c.field || c.Column_name || ''));
 
+    if (!productColumnNames.includes('egg_size')) {
+      console.log('Migration: Adding egg_size to products table...');
+      await db.execute('ALTER TABLE products ADD COLUMN egg_size VARCHAR(50)');
+    }
+
+    // Migration: Add egg_size to order_items
+    if (!orderItemColumnNames.includes('egg_size')) {
+      console.log('Migration: Adding egg_size to order_items table...');
+      await db.execute('ALTER TABLE order_items ADD COLUMN egg_size VARCHAR(50)');
+    }
+
     console.log('Migration: Database schema verified.');
   } catch (err) {
     console.error('Migration check for verification columns failed:', err);
@@ -273,6 +285,7 @@ async function startServer() {
       unit VARCHAR(50) DEFAULT 'tray',
       price DECIMAL(10,2) NOT NULL,
       egg_type VARCHAR(255),
+      egg_size VARCHAR(50),
       price_per_tray DECIMAL(10,2),
       INDEX (order_id),
       INDEX (product_id),
@@ -826,7 +839,7 @@ async function startServer() {
   app.post('/api/products', async (req, res) => {
     try {
       const { 
-        farmer_id, name, egg_type, description, 
+        farmer_id, name, egg_type, egg_size, description, 
         price_per_tray, stock_tray, 
         category_id, image_url 
       } = req.body;
@@ -848,13 +861,13 @@ async function startServer() {
 
       const result = await db.execute(`
         INSERT INTO products (
-          farmer_id, name, egg_type, description, price, 
+          farmer_id, name, egg_type, egg_size, description, price, 
           price_per_tray, price_per_dozen, 
           stock, stock_tray, stock_dozen,
           category_id, image_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          farmer_id, name, egg_type, description, 0, 
+          farmer_id, name, egg_type, egg_size, description, 0, 
           price_per_tray || 0, 0, 
           0, stock_tray || 0, 0,
           category_id, image_url
@@ -873,7 +886,7 @@ async function startServer() {
   app.put('/api/products/:id', async (req, res) => {
     try {
       const { 
-        name, egg_type, description, 
+        name, egg_type, egg_size, description, 
         price_per_tray, stock_tray, 
         category_id, image_url 
       } = req.body;
@@ -890,13 +903,13 @@ async function startServer() {
 
       await db.execute(`
         UPDATE products SET 
-          name = ?, egg_type = ?, description = ?, 
+          name = ?, egg_type = ?, egg_size = ?, description = ?, 
           price = ?, price_per_tray = ?, price_per_dozen = ?, 
           stock = ?, stock_tray = ?, stock_dozen = ?, 
           category_id = ?, image_url = ? 
         WHERE id = ?`,
         [
-          name, egg_type, description, 
+          name, egg_type, egg_size, description, 
           0, price_per_tray || 0, 0, 
           0, stock_tray || 0, 0,
           category_id, image_url, req.params.id
@@ -1163,10 +1176,11 @@ async function startServer() {
           // Use item.price from frontend (calculated snapshot) or fallback to current DB price
           const priceSnapshot = item.price || product.price_per_tray || 0;
           const eggTypeSnapshot = product.egg_type || 'Standard';
+          const eggSizeSnapshot = product.egg_size || null;
           const pricePerTraySnapshot = product.price_per_tray || 0;
 
-          await conn.execute('INSERT INTO order_items (order_id, product_id, quantity, unit, price, egg_type, price_per_tray) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [orderId, item.id, item.quantity, 'tray', priceSnapshot, eggTypeSnapshot, pricePerTraySnapshot]);
+          await conn.execute('INSERT INTO order_items (order_id, product_id, quantity, unit, price, egg_type, egg_size, price_per_tray) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [orderId, item.id, item.quantity, 'tray', priceSnapshot, eggTypeSnapshot, eggSizeSnapshot, pricePerTraySnapshot]);
           
           // 3. Update stock (Everything is now 'tray')
           await conn.execute('UPDATE products SET stock_tray = stock_tray - ? WHERE id = ?', [item.quantity, item.id]);

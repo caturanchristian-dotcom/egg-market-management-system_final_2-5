@@ -93,6 +93,7 @@ export default function FarmerDashboard() {
   const [formData, setFormData] = useState({
     name: '',
     egg_type: '',
+    egg_size: '',
     description: '',
     price_per_tray: 0,
     stock_tray: 0,
@@ -133,6 +134,7 @@ export default function FarmerDashboard() {
       setFormData({ 
         name: '', 
         egg_type: '',
+        egg_size: '',
         description: '', 
         price_per_tray: 0,
         stock_tray: 0,
@@ -417,6 +419,7 @@ export default function FarmerDashboard() {
         setFormData({ 
           name: '', 
           egg_type: '',
+          egg_size: '',
           description: '', 
           price_per_tray: 0,
           stock_tray: 0,
@@ -582,6 +585,7 @@ export default function FarmerDashboard() {
                     setFormData({
                       name: product.name,
                       egg_type: product.egg_type || '',
+                      egg_size: product.egg_size || '',
                       description: product.description || '',
                       price_per_tray: product.price_per_tray || 0,
                       stock_tray: product.stock_tray || 0,
@@ -796,6 +800,7 @@ export default function FarmerDashboard() {
             setFormData({ 
               name: '', 
               egg_type: '',
+              egg_size: '',
               description: '', 
               price_per_tray: 0,
               stock_tray: 0,
@@ -822,6 +827,7 @@ export default function FarmerDashboard() {
                     setFormData({
                       name: product.name,
                       egg_type: product.egg_type || '',
+                      egg_size: product.egg_size || '',
                       description: product.description || '',
                       price_per_tray: product.price_per_tray || 0,
                       stock_tray: product.stock_tray || 0,
@@ -844,7 +850,14 @@ export default function FarmerDashboard() {
             </div>
             <div className="p-3 md:p-5">
               <div className="flex justify-between items-start mb-1 md:mb-2">
-                <h3 className="font-bold text-emerald-900 text-sm md:text-base">{product.name}</h3>
+                <div>
+                  <h3 className="font-bold text-emerald-900 text-sm md:text-base">{product.name}</h3>
+                  {product.egg_size && (
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase">
+                      {product.egg_size}
+                    </span>
+                  )}
+                </div>
                 <span className="text-emerald-600 font-bold text-xs md:text-sm">₱{Number(product.price_per_tray).toFixed(2)}/tray</span>
               </div>
               
@@ -1126,9 +1139,14 @@ export default function FarmerDashboard() {
                     <img src={product.image_url || EGG_PLACEHOLDER} className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
                     <div className="flex flex-col">
                       <span className="font-bold text-emerald-900 text-sm">{product.name}</span>
-                      {product.egg_type && (
-                        <span className="text-[10px] text-emerald-400 uppercase font-bold">{product.egg_type}</span>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {product.egg_type && (
+                          <span className="text-[10px] text-emerald-400 uppercase font-bold">{product.egg_type}</span>
+                        )}
+                        {product.egg_size && (
+                          <span className="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded font-bold uppercase">{product.egg_size}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -1201,6 +1219,7 @@ export default function FarmerDashboard() {
                           setFormData({
                             name: product.name,
                             egg_type: product.egg_type || '',
+                            egg_size: product.egg_size || '',
                             description: product.description || '',
                             price_per_tray: product.price_per_tray || 0,
                             stock_tray: product.stock_tray || 0,
@@ -1940,7 +1959,22 @@ export default function FarmerDashboard() {
                   />
                 </div>
                 <div className="col-span-2 space-y-1">
-                  <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Egg Type</label>
+                  <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Egg Type (Size)</label>
+                  <select 
+                    value={formData.egg_size}
+                    onChange={e => setFormData({ ...formData, egg_size: e.target.value })}
+                    className="w-full px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                  >
+                    <option value="">Select Size</option>
+                    <option value="Small">Small</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Large">Large</option>
+                    <option value="Extra Large">Extra Large</option>
+                    <option value="Jumbo">Jumbo</option>
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Egg Variety (Optional)</label>
                   <input 
                     type="text"
                     value={formData.egg_type}
@@ -2001,16 +2035,6 @@ export default function FarmerDashboard() {
                       </div>
                     )}
                   </div>
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Description</label>
-                  <textarea 
-                    rows={3}
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                    placeholder="Tell customers about your eggs..."
-                  />
                 </div>
               </div>
               <button 
