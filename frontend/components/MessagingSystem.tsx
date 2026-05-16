@@ -4,6 +4,7 @@ import { Conversation, Message } from '../types';
 import { Send, User as UserIcon, Search, MessageSquare, ArrowLeft, Loader2, Clock, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
+import { useNotifications } from '../contexts/NotificationContext';
 
 interface MessagingSystemProps {
   initialChatRole?: string | null;
@@ -13,6 +14,7 @@ interface MessagingSystemProps {
 
 export default function MessagingSystem({ initialChatRole, initialUserId, initialUserName }: MessagingSystemProps) {
   const { user } = useAuth();
+  const { socket } = useNotifications();
   const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<Conversation | null>(null);
@@ -23,6 +25,36 @@ export default function MessagingSystem({ initialChatRole, initialUserId, initia
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Real-time: Listen for new messages
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    socket.on('new_message', (data) => {
+      console.log('Real-time message received!', data);
+      
+      // If the message is from the currently selected chat, add it to the messages list
+      if (selectedChat && data.sender_id === selectedChat.other_user_id) {
+        setMessages(prev => {
+          // Prevent duplicates
+          if (prev.some(m => m.id === data.id)) return prev;
+          return [...prev, {
+            ...data,
+            id: data.id || Date.now(),
+            receiver_id: user.id
+          }];
+        });
+        markAsRead();
+      }
+      
+      // Always refresh conversations list to show latest message and unread count
+      fetchConversations();
+    });
+
+    return () => {
+      socket.off('new_message');
+    };
+  }, [socket, user, selectedChat]);
 
   useEffect(() => {
     const fetchInitialChat = async () => {
@@ -70,9 +102,6 @@ export default function MessagingSystem({ initialChatRole, initialUserId, initia
     if (selectedChat && user) {
       fetchMessages(true);
       markAsRead();
-      
-      const interval = setInterval(() => fetchMessages(false), 5000);
-      return () => clearInterval(interval);
     }
   }, [selectedChat, user]);
 

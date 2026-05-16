@@ -33,7 +33,7 @@ export default function Marketplace() {
     clearCart
   } = useCart();
   
-  const { showToast } = useNotifications();
+  const { showToast, socket } = useNotifications();
   const navigate = useNavigate();
   
   // UI and product states
@@ -105,6 +105,22 @@ export default function Marketplace() {
       setLoading(false);
     }
   };
+
+  // Real-time: Listen for product updates
+  useEffect(() => {
+    if (!socket) return;
+    
+    socket.emit('join_marketplace');
+    
+    socket.on('products_updated', () => {
+      console.log('Products updated on server, refreshing...');
+      fetchData();
+    });
+
+    return () => {
+      socket.off('products_updated');
+    };
+  }, [socket]);
 
   /**
    * Fetches public reviews for a specific farmer to build confidence

@@ -418,7 +418,14 @@ async function startServer() {
   if (io) {
     io.on('connection', (socket) => {
       socket.on('identify', (userId) => {
-        userSockets.set(userId.toString(), socket.id);
+        const uid = userId.toString();
+        userSockets.set(uid, socket.id);
+        socket.join(`user:${uid}`);
+        console.log(`User ${uid} identified and joined room user:${uid}`);
+      });
+
+      socket.on('join_marketplace', () => {
+        socket.join('marketplace');
       });
 
       socket.on('disconnect', () => {
@@ -436,10 +443,13 @@ async function startServer() {
   // Helper to send real-time notification
   const sendRealTimeNotification = (userId: number, message: string, data?: any) => {
     if (!io) return;
-    const socketId = userSockets.get(userId.toString());
-    if (socketId) {
-      io.to(socketId).emit('notification', { message, ...data });
-    }
+    io.to(`user:${userId}`).emit('notification', { message, ...data });
+  };
+
+  // Helper to broadcast product updates
+  const broadcastProductUpdate = () => {
+    if (!io) return;
+    io.emit('products_updated');
   };
   
   // Ensure uploads directory exists
@@ -872,6 +882,8 @@ async function startServer() {
           0, stock_tray || 0, 0,
           category_id, image_url
         ]);
+      
+      broadcastProductUpdate();
       res.json({ id: (result as any).insertId });
     } catch (err: any) {
       console.error('Error creating product:', err);
@@ -914,6 +926,8 @@ async function startServer() {
           0, stock_tray || 0, 0,
           category_id, image_url, req.params.id
         ]);
+      
+      broadcastProductUpdate();
       res.json({ success: true });
     } catch (err: any) {
       console.error('Error updating product:', err);
@@ -1051,6 +1065,15 @@ async function startServer() {
     const sender = await db.queryOne('SELECT name FROM users WHERE id = ?', [sender_id]);
     await db.execute('INSERT INTO notifications (user_id, message) VALUES (?, ?)',
       [receiver_id, `New message from ${sender.name}: ${content.substring(0, 30)}${content.length > 30 ? '...' : ''}`]);
+    
+    if (io) {
+      io.to(`user:${receiver_id}`).emit('new_message', { 
+        sender_id, 
+        content,
+        created_at: new Date()
+      });
+      sendRealTimeNotification(receiver_id, `New message from ${sender.name}`);
+    }
       
     res.json({ id: (result as any).insertId });
   });
@@ -1165,12 +1188,16 @@ async function startServer() {
         const [result] = await conn.execute('INSERT INTO orders (customer_id, total_amount) VALUES (?, ?)', [customer_id, total_amount]);
         orderId = (result as any).insertId;
 
+        const farmersToNotify = new Set<number>();
+
         // 2. Process each item in the cart
         for (const item of items) {
           const [products] = await conn.query('SELECT farmer_id, name, egg_type, price_per_tray FROM products WHERE id = ?', [item.id]) as any[];
           const product = products.length > 0 ? products[0] : null;
           
           if (!product) continue; // Skip if product somehow disappeared
+
+          farmersToNotify.add(product.farmer_id);
 
           // Store snapshot of product details in order_items for historical accuracy
           // Use item.price from frontend (calculated snapshot) or fallback to current DB price
@@ -1191,6 +1218,14 @@ async function startServer() {
           
           sendRealTimeNotification(product.farmer_id, farmerMessage);
         }
+
+        // Notify all involved farmers to refresh their dashboards
+        farmersToNotify.forEach(farmerId => {
+          if (io) io.to(`user:${farmerId}`).emit('new_order', { order_id: orderId });
+        });
+
+        // Broadcast global product update for stock changes
+        broadcastProductUpdate();
 
         // Notify customer that order is pending
         const [customers] = await conn.query('SELECT email, name FROM users WHERE id = ?', [customer_id]) as any[];
@@ -1328,6 +1363,7 @@ async function startServer() {
       
       // Broadcast real-time update
       sendRealTimeNotification(orderData.customer_id, message);
+      if (io) io.to(`user:${orderData.customer_id}`).emit('order_updated', { order_id: req.params.id, status });
 
       // --- Gmail Notification ---
       const emailSubject = `Order Update: #${req.params.id} is now ${status.toUpperCase()}`;

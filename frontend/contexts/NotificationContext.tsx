@@ -15,6 +15,7 @@ interface NotificationContextType {
   markAsRead: (id: number) => Promise<void>; // Logic to transition a notification to read state
   markAllAsRead: () => Promise<void>; // Bulk mark as read for current user
   showToast: (message: string, type: ToastType) => void; // Function to trigger a short-lived UI toast
+  socket: Socket | null; // Socket instance for component-level event listening
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -36,7 +37,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     isOpen: false
   });
 
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   /**
    * Universal toast trigger
@@ -111,21 +112,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (user) {
       fetchNotifications();
       
-      const socket = io();
-      socketRef.current = socket;
+      const s = io();
+      setSocket(s);
 
-      socket.emit('identify', user.id);
+      s.emit('identify', user.id);
 
-      socket.on('notification', (data) => {
+      s.on('notification', (data) => {
         showToast(data.message, 'info');
         fetchNotifications();
       });
 
       return () => {
-        socket.disconnect();
+        s.disconnect();
+        setSocket(null);
       };
     } else {
       setNotifications([]);
+      setSocket(null);
     }
   }, [user, fetchNotifications, showToast]);
 
@@ -139,7 +142,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       fetchNotifications, 
       markAsRead,
       markAllAsRead,
-      showToast
+      showToast,
+      socket
     }}>
       {children}
       {/* Global Toast portal component */}

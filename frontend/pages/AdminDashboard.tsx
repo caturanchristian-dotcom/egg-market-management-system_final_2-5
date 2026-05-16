@@ -47,7 +47,7 @@ import { EGG_PLACEHOLDER } from '../constants';
  */
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { showToast } = useNotifications();
+  const { showToast, socket } = useNotifications();
   
   // Navigation and data states
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -202,6 +202,25 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   };
+
+  // Real-time: Listen for platform-wide updates
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('new_order', () => {
+      console.log('Admin: New order detected, refreshing stats...');
+      fetchData();
+    });
+
+    socket.on('products_updated', () => {
+       fetchData();
+    });
+
+    return () => {
+      socket.off('new_order');
+      socket.off('products_updated');
+    };
+  }, [socket]);
 
   /**
    * Handles creation and profile editing of platform users

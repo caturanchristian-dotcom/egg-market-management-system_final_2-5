@@ -35,8 +35,23 @@ import ConfirmationModal from '../components/ConfirmationModal';
  */
 export default function CustomerDashboard() {
   const { user, updateUser } = useAuth();
-  const { showToast } = useNotifications();
+  const { showToast, socket } = useNotifications();
   const navigate = useNavigate();
+
+  // Real-time: Listen for order updates
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('order_updated', (data) => {
+      console.log('Order updated!', data);
+      showToast(`Order #${data.order_id} status updated to ${data.status}`, 'info');
+      fetchOrders();
+    });
+
+    return () => {
+      socket.off('order_updated');
+    };
+  }, [socket]);
   
   // Tab-based navigation state
   const [activeTab, setActiveTab] = useState('my-orders');

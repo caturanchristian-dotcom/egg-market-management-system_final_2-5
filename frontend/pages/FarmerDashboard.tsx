@@ -56,7 +56,7 @@ const EGG_GALLERY = [
  */
 export default function FarmerDashboard() {
   const { user } = useAuth();
-  const { showToast } = useNotifications();
+  const { showToast, socket } = useNotifications();
   const navigate = useNavigate();
   
   // Dashboard state management
@@ -179,11 +179,6 @@ export default function FarmerDashboard() {
     if (user) {
       fetchData();
       fetchSalesStats();
-      const interval = setInterval(() => {
-        fetchData();
-        fetchSalesStats();
-      }, 30000);
-      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -279,6 +274,27 @@ export default function FarmerDashboard() {
       setLoading(false);
     }
   };
+
+  // Real-time: Listen for new orders and product updates
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('new_order', (data) => {
+      console.log('New order received!', data);
+      showToast('A new order has been placed!', 'success');
+      fetchData();
+    });
+
+    socket.on('products_updated', () => {
+      console.log('Products updated on server, refreshing...');
+      fetchData();
+    });
+
+    return () => {
+      socket.off('new_order');
+      socket.off('products_updated');
+    };
+  }, [socket]);
 
   /**
    * Triggers the deletion workflow for an order record
