@@ -316,7 +316,7 @@ export default function Home() {
                   />
                   <motion.img 
                     whileHover={{ scale: 1.05 }}
-                    src="https://images.unsplash.com/photo-1587486914673-2192e1e119c7?auto=format&fit=crop&q=80&w=500" 
+                    src="https://pngimg.com/uploads/egg/egg_PNG40776.png" 
                     className="rounded-[2rem] md:rounded-[3rem] w-full aspect-[3/4] object-cover shadow-2xl border-2 md:border-4 border-emerald-900" 
                     alt="Organic Brown Eggs" referrerPolicy="no-referrer" 
                   />
@@ -324,7 +324,7 @@ export default function Home() {
                 <div className="space-y-4 md:space-y-6">
                   <motion.img 
                     whileHover={{ scale: 1.05 }}
-                    src="https://images.unsplash.com/photo-1591465001581-2c57a07a7a30?auto=format&fit=crop&q=80&w=500" 
+                    src="https://www.allrecipes.com/thmb/SPgLtYP1TyEf0Gk1cyvkd_phlBs=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/Brown-Eggs-vs-White-Eggs-3x2-1-339233e9385c42e0a87ca370afc4ac2f.png" 
                     className="rounded-[2rem] md:rounded-[3rem] w-full aspect-[3/4] object-cover shadow-2xl border-2 md:border-4 border-emerald-900" 
                     alt="Egg Carton" referrerPolicy="no-referrer" 
                   />
