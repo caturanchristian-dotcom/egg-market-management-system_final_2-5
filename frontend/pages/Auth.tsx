@@ -26,9 +26,12 @@ export default function AuthPage() {
   
   // Local state for UI toggles and processing status
   const [isLogin, setIsLogin] = useState(true);
+  const [authMode, setAuthMode] = useState<'auth' | 'forgot' | 'reset'>('auth');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successInfo, setSuccessInfo] = useState('');
+  const [debugToken, setDebugToken] = useState('');
   
   // Custom auth hook for session management
   const { login, user, refreshUser } = useAuth();
@@ -155,6 +158,75 @@ export default function AuthPage() {
     }
   };
 
+  /**
+   * Handle Forgot Password Request
+   */
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccessInfo('');
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessInfo(data.message);
+        if (data.debugToken) {
+          setDebugToken(data.debugToken);
+        }
+        setAuthMode('reset');
+      } else {
+        setError(data.error || 'Failed to send reset code');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Handle Reset Password Submission
+   */
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: formData.email, 
+          token: debugToken,
+          newPassword: formData.password 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessInfo('Password reset successful! You can now log in.');
+        setAuthMode('auth');
+        setIsLogin(true);
+      } else {
+        setError(data.error || 'Failed to reset password');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-emerald-50 flex flex-col items-center justify-center p-4">
       <div className="mb-6">
@@ -182,239 +254,360 @@ export default function AuthPage() {
           </div>
           <h1 className="text-2xl font-bold">Egg Market System</h1>
           <p className="text-emerald-100 mt-2">
-            {isLogin ? 'Welcome back! Sign in to continue.' : 'Join our community of farmers and egg lovers.'}
+            {authMode === 'auth' ? (isLogin ? 'Welcome back! Sign in to continue.' : 'Join our community of farmers and egg lovers.') : 
+             authMode === 'forgot' ? 'Forgot your password? No worries.' : 'Reset your password using the code.'}
           </p>
         </div>
 
         <div className="p-8">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-center gap-2">
-              <div className="w-1 h-1 bg-red-600 rounded-full" />
+              <div className="w-1.5 h-1.5 bg-red-600 rounded-full shrink-0" />
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+          {successInfo && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 text-sm rounded-xl flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full shrink-0" />
+              {successInfo}
+            </div>
+          )}
+
+          {authMode === 'auth' && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Full Name</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Full Name</label>
+                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Email Address</label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
                   <input 
-                    type="text" 
+                    type="email" 
                     required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                    placeholder="John Doe"
+                    placeholder="name@example.com"
                   />
                 </div>
               </div>
-            )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
-                <input 
-                  type="email" 
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  placeholder="name@example.com"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-10 pr-12 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-emerald-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {!isLogin && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Phone Number</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
-                    <input 
-                      type="tel" 
-                      required
-                      value={formData.phone}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        if (val.length <= 11) {
-                          setFormData({ ...formData, phone: val });
-                        }
-                      }}
-                      className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                      placeholder="09123456789"
-                      maxLength={11}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Purok</label>
-                    <div className="relative">
-                      <Home className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
-                      <input 
-                        type="text" 
-                        required
-                        value={formData.purok}
-                        onChange={(e) => setFormData({ ...formData, purok: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                        placeholder="Purok 1"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Address</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
-                      <input 
-                        type="text" 
-                        required
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                        placeholder="Street, City"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-              </>
-            )}
-
-            {!isLogin && (
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">I am a...</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setFormData({ ...formData, role: 'customer' })}
-                    className={`py-3 rounded-xl border text-sm font-medium transition-all ${
-                      formData.role === 'customer' 
-                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' 
-                        : 'bg-white border-emerald-100 text-emerald-700 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Customer
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setFormData({ ...formData, role: 'farmer' })}
-                    className={`py-3 rounded-xl border text-sm font-medium transition-all ${
-                      formData.role === 'farmer' 
-                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' 
-                        : 'bg-white border-emerald-100 text-emerald-700 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Farmer
-                  </button>
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Password</label>
+                  {isLogin && (
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('forgot');
+                        setError('');
+                        setSuccessInfo('');
+                      }}
+                      className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 uppercase tracking-wider"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {!isLogin && (
-              <div className="space-y-4">
-                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1 flex items-center gap-2">
-                  <MapPin size={14} /> Map Location (Pin your address)
-                </label>
-                
-                <div className="h-[200px] w-full rounded-xl overflow-hidden border border-emerald-100 z-0">
-                  <MapContainer 
-                    center={[formData.latitude || 14.5995, formData.longitude || 120.9842]} 
-                    zoom={13} 
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <RegistrationLocationMarker 
-                      position={[formData.latitude || 14.5995, formData.longitude || 120.9842]}
-                      setPosition={(pos) => setFormData(prev => ({ ...prev, latitude: pos[0], longitude: pos[1] }))}
-                    />
-                  </MapContainer>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1 px-3 py-2 bg-emerald-50 text-[10px] text-emerald-600 rounded-lg flex items-center gap-2 font-mono">
-                    {formData.latitude ? `${formData.latitude.toFixed(4)}, ${formData.longitude?.toFixed(4)}` : 'No coordinates selected'}
-                  </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full pl-10 pr-12 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
                   <button
                     type="button"
-                    onClick={() => {
-                      if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition((pos) => {
-                          setFormData(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
-                        });
-                      }
-                    }}
-                    className="px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-all flex items-center gap-1"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-emerald-600 transition-colors"
                   >
-                    <Navigation size={12} /> GPS
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
-            )}
 
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : (
+              {!isLogin && (
                 <>
-                  {isLogin ? 'Sign In' : 'Create Account'}
-                  <ArrowRight size={20} />
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Phone Number</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                      <input 
+                        type="tel" 
+                        required
+                        value={formData.phone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          if (val.length <= 11) {
+                            setFormData({ ...formData, phone: val });
+                          }
+                        }}
+                        className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="09123456789"
+                        maxLength={11}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Purok</label>
+                      <div className="relative">
+                        <Home className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                        <input 
+                          type="text" 
+                          required
+                          value={formData.purok}
+                          onChange={(e) => setFormData({ ...formData, purok: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                          placeholder="Purok 1"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Address</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                        <input 
+                          type="text" 
+                          required
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                          placeholder="Street, City"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
-            </button>
-          </form>
 
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex-1 h-px bg-emerald-100" />
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Or continue with</span>
-            <div className="flex-1 h-px bg-emerald-100" />
-          </div>
+              {!isLogin && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">I am a...</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: 'customer' })}
+                      className={`py-3 rounded-xl border text-sm font-medium transition-all ${
+                        formData.role === 'customer' 
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' 
+                          : 'bg-white border-emerald-100 text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                    >
+                      Customer
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: 'farmer' })}
+                      className={`py-3 rounded-xl border text-sm font-medium transition-all ${
+                        formData.role === 'farmer' 
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' 
+                          : 'bg-white border-emerald-100 text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                    >
+                      Farmer
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          <button 
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="mt-4 w-full bg-white hover:bg-emerald-50 text-emerald-700 font-bold py-3 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70"
-          >
-            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            {isLogin ? 'Sign in with Google' : 'Sign up with Google'}
-          </button>
+              {!isLogin && (
+                <div className="space-y-4">
+                  <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1 flex items-center gap-2">
+                    <MapPin size={14} /> Map Location (Pin your address)
+                  </label>
+                  
+                  <div className="h-[200px] w-full rounded-xl overflow-hidden border border-emerald-100 z-0">
+                    <MapContainer 
+                      center={[formData.latitude || 14.5995, formData.longitude || 120.9842]} 
+                      zoom={13} 
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <RegistrationLocationMarker 
+                        position={[formData.latitude || 14.5995, formData.longitude || 120.9842]}
+                        setPosition={(pos) => setFormData(prev => ({ ...prev, latitude: pos[0], longitude: pos[1] }))}
+                      />
+                    </MapContainer>
+                  </div>
 
-          <div className="mt-8 text-center">
-            <button 
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-emerald-600 font-semibold hover:underline"
-            >
-              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
-            </button>
-          </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1 px-3 py-2 bg-emerald-50 text-[10px] text-emerald-600 rounded-lg flex items-center gap-2 font-mono">
+                      {formData.latitude ? `${formData.latitude.toFixed(4)}, ${formData.longitude?.toFixed(4)}` : 'No coordinates selected'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition((pos) => {
+                            setFormData(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
+                          });
+                        }
+                      }}
+                      className="px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-all flex items-center gap-1"
+                    >
+                      <Navigation size={12} /> GPS
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
+              >
+                {loading ? <Loader2 className="animate-spin" size={20} /> : (
+                  <>
+                    {isLogin ? 'Sign In' : 'Create Account'}
+                    <ArrowRight size={20} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {authMode === 'forgot' && (
+            <form onSubmit={handleForgotPassword} className="space-y-6">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                  <input 
+                    type="email" 
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <p className="text-[10px] text-emerald-500 mt-2 px-1">We will send a 6-digit reset code to this email address.</p>
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : 'Send Reset Code'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('auth');
+                    setError('');
+                    setSuccessInfo('');
+                  }}
+                  className="w-full py-3 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'reset' && (
+            <form onSubmit={handleResetPassword} className="space-y-6">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">Reset Code</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                  <input 
+                    type="text" 
+                    required
+                    value={debugToken}
+                    onChange={(e) => setDebugToken(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-mono tracking-widest"
+                    placeholder="123456"
+                    maxLength={6}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wider ml-1">New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" size={18} />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full pl-10 pr-12 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : 'Reset Password'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setAuthMode('forgot')}
+                  className="w-full py-3 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                >
+                  Resend Code
+                </button>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'auth' && (
+            <>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="flex-1 h-px bg-emerald-100" />
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Or continue with</span>
+                <div className="flex-1 h-px bg-emerald-100" />
+              </div>
+
+              <button 
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="mt-4 w-full bg-white hover:bg-emerald-50 text-emerald-700 font-bold py-3 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70"
+              >
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                {isLogin ? 'Sign in with Google' : 'Sign up with Google'}
+              </button>
+
+              <div className="mt-8 text-center">
+                <button 
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-emerald-600 font-semibold hover:underline"
+                >
+                  {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </motion.div>
     </div>

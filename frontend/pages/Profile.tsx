@@ -84,6 +84,9 @@ export default function Profile() {
     newPassword: '',
     confirmPassword: ''
   });
+  const [resetTokenSent, setResetTokenSent] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [debugToken, setDebugToken] = useState('');
 
   /**
    * Synchronize local form data with authenticated user object on mount/change
@@ -227,25 +230,56 @@ export default function Profile() {
 
     setSaveLoading(true);
     try {
-      const res = await fetch(`/api/users/${user?.id}/password`, {
-        method: 'PUT',
+      const endpoint = resetTokenSent ? '/api/auth/reset-password' : `/api/users/${user?.id}/password`;
+      const body = resetTokenSent 
+        ? { email: user?.email, token: resetToken, newPassword: securityData.newPassword }
+        : { currentPassword: securityData.currentPassword, newPassword: securityData.newPassword };
+
+      const res = await fetch(endpoint, {
+        method: resetTokenSent ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentPassword: securityData.currentPassword,
-          newPassword: securityData.newPassword
-        })
+        body: JSON.stringify(body)
       });
 
       if (res.ok) {
-        showNotify('Password updated successfully!', 'success');
+        showNotify(resetTokenSent ? 'Password reset successfully!' : 'Password updated successfully!', 'success');
         setShowSecurityModal(false);
         setSecurityData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setResetTokenSent(false);
+        setResetToken('');
       } else {
         const errorData = await res.json();
         showNotify(errorData.error || 'Failed to update password.', 'error');
       }
     } catch (err) {
       showNotify('An error occurred.', 'error');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  /**
+   * Initiates forgot password flow from within profile
+   */
+  const handleForgotRequest = async () => {
+    if (!user?.email) return;
+    setSaveLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResetTokenSent(true);
+        if (data.debugToken) setDebugToken(data.debugToken);
+        showNotify('Reset code sent to your email!', 'success');
+      } else {
+        showNotify(data.error || 'Failed to send reset code.', 'error');
+      }
+    } catch (err) {
+      showNotify('Connection error.', 'error');
     } finally {
       setSaveLoading(false);
     }
@@ -748,25 +782,53 @@ export default function Profile() {
                 </button>
               </div>
               <form onSubmit={handlePasswordChange} className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Current Password</label>
-                  <div className="relative">
-                    <input 
-                      type={showCurrentPassword ? "text" : "password"} 
-                      required
-                      value={securityData.currentPassword}
-                      onChange={e => setSecurityData({ ...securityData, currentPassword: e.target.value })}
-                      className="w-full px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all pr-12"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-emerald-600 transition-colors"
-                    >
-                      {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                {!resetTokenSent ? (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Current Password</label>
+                      <button 
+                        type="button"
+                        onClick={handleForgotRequest}
+                        disabled={saveLoading}
+                        className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 uppercase tracking-wider disabled:opacity-50"
+                      >
+                        Forgot?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type={showCurrentPassword ? "text" : "password"} 
+                        required={!resetTokenSent}
+                        value={securityData.currentPassword}
+                        onChange={e => setSecurityData({ ...securityData, currentPassword: e.target.value })}
+                        className="w-full px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-emerald-600 transition-colors"
+                      >
+                        {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Reset Code</label>
+                      {debugToken && <span className="text-[10px] font-mono text-emerald-400">Code: {debugToken}</span>}
+                    </div>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Enter 6-digit code"
+                      value={resetToken}
+                      onChange={e => setResetToken(e.target.value)}
+                      className="w-full px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-mono tracking-widest text-center"
+                      maxLength={6}
+                    />
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">New Password</label>
                   <div className="relative">
@@ -801,8 +863,17 @@ export default function Profile() {
                   disabled={saveLoading}
                   className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
                 >
-                  {saveLoading ? 'Updating...' : 'Update Password'}
+                  {saveLoading ? 'Updating...' : resetTokenSent ? 'Reset Password' : 'Update Password'}
                 </button>
+                {resetTokenSent && (
+                  <button 
+                    type="button"
+                    onClick={() => setResetTokenSent(false)}
+                    className="w-full py-2 text-xs font-bold text-emerald-500 hover:text-emerald-700 uppercase tracking-wider"
+                  >
+                    Use Current Password Instead
+                  </button>
+                )}
               </form>
             </motion.div>
           </div>

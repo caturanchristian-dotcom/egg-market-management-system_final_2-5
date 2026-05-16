@@ -210,6 +210,12 @@ async function startServer() {
       console.log('Migration: Adding longitude to users table...');
       await db.execute('ALTER TABLE users ADD COLUMN longitude DOUBLE');
     }
+
+    if (!columnNames.includes('reset_token')) {
+      console.log('Migration: Adding reset_token to users table...');
+      await db.execute('ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)');
+      await db.execute('ALTER TABLE users ADD COLUMN reset_token_expires DATETIME');
+    }
     console.log('Migration: User table location columns verified.');
   } catch (err) {
     console.error('Migration check failed or columns already exist:', err);
@@ -630,6 +636,74 @@ async function startServer() {
     });
     res.json({ success: true });
   });
+
+  /**
+   * POST /api/auth/forgot-password
+   * Generates a reset token and sends it via email (or returns it in response for dev)
+   */
+  app.post('/api/auth/forgot-password', asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const user = await db.queryOne('SELECT id, name, email FROM users WHERE email = ?', [email]);
+    
+    if (!user) {
+      // For security, don't reveal if user exists, but here we want to be helpful
+      return res.status(404).json({ error: 'No account found with that email address.' });
+    }
+
+    // Generate 6-digit numeric token for simplicity in mobile/web
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 3600000); // 1 hour
+
+    await db.execute('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?', 
+      [token, expires, user.id]);
+
+    // Try to send email
+    const subject = 'Password Reset Token - EggMarket';
+    const body = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e8ed; border-radius: 12px;">
+        <h2 style="color: #059669;">Password Reset Request</h2>
+        <p>Hello ${user.name},</p>
+        <p>We received a request to reset your password. Use the code below to proceed:</p>
+        <div style="background: #f0fdf4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #059669; border-radius: 8px; margin: 20px 0;">
+          ${token}
+        </div>
+        <p>This code will expire in 1 hour.</p>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 20px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">EggMarket Egg Valley System</p>
+      </div>
+    `;
+    
+    await sendGmailNotification(user.email, subject, body);
+
+    res.json({ 
+      success: true, 
+      message: 'Reset token sent to your email.',
+      // In development/preview environment where GMAIL might not be configured, 
+      // we return the token so the user can actually use the feature
+      debugToken: process.env.NODE_ENV !== 'production' ? token : undefined 
+    });
+  }));
+
+  /**
+   * POST /api/auth/reset-password
+   * Validates token and updates password
+   */
+  app.post('/api/auth/reset-password', asyncHandler(async (req, res) => {
+    const { email, token, newPassword } = req.body;
+    
+    const user = await db.queryOne('SELECT id FROM users WHERE email = ? AND reset_token = ? AND reset_token_expires > NOW()', 
+      [email, token]);
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired reset token.' });
+    }
+
+    await db.execute('UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?', 
+      [newPassword, user.id]);
+
+    res.json({ success: true, message: 'Password has been reset successfully.' });
+  }));
 
   // --- Google OAuth Routes ---
 
