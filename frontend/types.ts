@@ -50,16 +50,6 @@ export interface Product {
   description: string;
   price_per_tray: number;
   stock_tray: number;
-  price_small?: number;
-  price_medium?: number;
-  price_large?: number;
-  price_xlarge?: number;
-  price_jumbo?: number;
-  stock_small?: number;
-  stock_medium?: number;
-  stock_large?: number;
-  stock_xlarge?: number;
-  stock_jumbo?: number;
   category_id: number;
   category_name?: string;
   image_url: string;
@@ -103,7 +93,7 @@ export interface OrderItem {
   egg_type?: string;
   egg_size?: string;
   quantity: number;
-  unit: 'tray' | 'unit';
+  unit: 'tray';
   price_per_tray: number; // Snapshot price per unit at time of purchase
   image_url: string;
 }

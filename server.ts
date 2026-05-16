@@ -160,19 +160,9 @@ async function startServer() {
       price DECIMAL(10,2) NOT NULL,
       price_per_tray DECIMAL(10,2),
       price_per_dozen DECIMAL(10,2),
-      price_small DECIMAL(10,2),
-      price_medium DECIMAL(10,2),
-      price_large DECIMAL(10,2),
       stock INT NOT NULL,
       stock_tray INT DEFAULT 0,
       stock_dozen INT DEFAULT 0,
-      stock_small INT DEFAULT 0,
-      stock_medium INT DEFAULT 0,
-      stock_large INT DEFAULT 0,
-      price_xlarge DECIMAL(10,2) DEFAULT 0,
-      stock_xlarge INT DEFAULT 0,
-      price_jumbo DECIMAL(10,2) DEFAULT 0,
-      stock_jumbo INT DEFAULT 0,
       category_id INT NOT NULL,
       image_url LONGTEXT,
       is_deleted TINYINT(1) DEFAULT 0,
@@ -241,34 +231,12 @@ async function startServer() {
       await db.execute('ALTER TABLE users ADD COLUMN verification_document TEXT');
     }
 
-    // Migration: Add created_at to products table
-    const productColumns = await db.query('SHOW COLUMNS FROM products');
-    const productColumnNames = productColumns.map((c: any) => (c.Field || c.field || c.Column_name || ''));
-    if (!productColumnNames.includes('price_small')) {
-      console.log('Migration: Adding egg size columns to products table...');
-      await db.execute('ALTER TABLE products ADD COLUMN price_small DECIMAL(10,2) DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN price_medium DECIMAL(10,2) DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN price_large DECIMAL(10,2) DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN stock_small INT DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN stock_medium INT DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN stock_large INT DEFAULT 0');
-    }
-
-    if (!productColumnNames.includes('price_xlarge')) {
-      console.log('Migration: Adding extra large size columns to products table...');
-      await db.execute('ALTER TABLE products ADD COLUMN price_xlarge DECIMAL(10,2) DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN stock_xlarge INT DEFAULT 0');
-    }
-
-    if (!productColumnNames.includes('price_jumbo')) {
-      console.log('Migration: Adding jumbo size columns to products table...');
-      await db.execute('ALTER TABLE products ADD COLUMN price_jumbo DECIMAL(10,2) DEFAULT 0');
-      await db.execute('ALTER TABLE products ADD COLUMN stock_jumbo INT DEFAULT 0');
-    }
-
     // Migration: Upgrade image_url to LONGTEXT
     await db.execute('ALTER TABLE products MODIFY COLUMN image_url LONGTEXT');
     
+    const productColumns = await db.query('SHOW COLUMNS FROM products');
+    const productColumnNames = productColumns.map((c: any) => (c.Field || c.field || c.Column_name || ''));
+
     if (!productColumnNames.includes('created_at')) {
       console.log('Migration: Adding created_at to products table...');
       await db.execute("ALTER TABLE products ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
@@ -277,10 +245,6 @@ async function startServer() {
     // Migration: Add egg_size to order_items
     const orderItemColumns = await db.query('SHOW COLUMNS FROM order_items');
     const orderItemColumnNames = orderItemColumns.map((c: any) => (c.Field || c.field || c.Column_name || ''));
-    if (!orderItemColumnNames.includes('egg_size')) {
-      console.log('Migration: Adding egg_size to order_items table...');
-      await db.execute('ALTER TABLE order_items ADD COLUMN egg_size VARCHAR(50)');
-    }
 
     console.log('Migration: Database schema verified.');
   } catch (err) {
@@ -306,12 +270,10 @@ async function startServer() {
       order_id INT NOT NULL,
       product_id INT NOT NULL,
       quantity INT NOT NULL,
-      unit VARCHAR(50) DEFAULT 'unit',
+      unit VARCHAR(50) DEFAULT 'tray',
       price DECIMAL(10,2) NOT NULL,
       egg_type VARCHAR(255),
-      egg_size VARCHAR(50),
       price_per_tray DECIMAL(10,2),
-      price_per_dozen DECIMAL(10,2),
       INDEX (order_id),
       INDEX (product_id),
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
@@ -374,6 +336,9 @@ async function startServer() {
   if (userCount === 0) {
     // Add default users (Admin, Farmers, Customer)
     await db.execute('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', ['Admin User', 'admin@eggmarket.com', 'admin123', 'admin']);
+    await db.execute('INSERT INTO users (name, email, password, role, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)', ['Farmer John', 'john@farmer.com', 'farmer123', 'farmer', 14.5995, 120.9842]);
+    await db.execute('INSERT INTO users (name, email, password, role, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)', ['Farmer Maria', 'maria@farmer.com', 'maria123', 'farmer', 14.6010, 120.9850]);
+    await db.execute('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', ['Customer Alice', 'alice@customer.com', 'customer123', 'customer']);
     
     // Add standard egg categories
     await db.execute('INSERT IGNORE INTO categories (name) VALUES (?)', ['Chicken Eggs']);
@@ -383,6 +348,16 @@ async function startServer() {
 
     const chickenCategory = await db.queryOne('SELECT id FROM categories WHERE name = ?', ['Chicken Eggs']);
     const organicCategory = await db.queryOne('SELECT id FROM categories WHERE name = ?', ['Organic Eggs']);
+
+    // Add initial product listings
+    if (chickenCategory) {
+      await db.execute('INSERT INTO products (farmer_id, name, description, price, stock, category_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+        [2, 'Fresh Farm Chicken Eggs', 'Grade A fresh chicken eggs from free-range chickens.', 12.50, 100, chickenCategory.id, 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&q=80&w=400']);
+    }
+    if (organicCategory) {
+      await db.execute('INSERT INTO products (farmer_id, name, description, price, stock, category_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+        [2, 'Organic Brown Eggs', 'Certified organic brown eggs rich in Omega-3.', 15.00, 50, organicCategory.id, 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&q=80&w=400']);
+    }
   }
 } catch (err) {
   console.error('Migration failed:', err);
@@ -853,8 +828,6 @@ async function startServer() {
       const { 
         farmer_id, name, egg_type, description, 
         price_per_tray, stock_tray, 
-        price_small, price_medium, price_large, price_xlarge, price_jumbo,
-        stock_small, stock_medium, stock_large, stock_xlarge, stock_jumbo,
         category_id, image_url 
       } = req.body;
       
@@ -877,17 +850,13 @@ async function startServer() {
         INSERT INTO products (
           farmer_id, name, egg_type, description, price, 
           price_per_tray, price_per_dozen, 
-          price_small, price_medium, price_large, price_xlarge, price_jumbo,
           stock, stock_tray, stock_dozen,
-          stock_small, stock_medium, stock_large, stock_xlarge, stock_jumbo,
           category_id, image_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           farmer_id, name, egg_type, description, 0, 
           price_per_tray || 0, 0, 
-          price_small || 0, price_medium || 0, price_large || 0, price_xlarge || 0, price_jumbo || 0,
           0, stock_tray || 0, 0,
-          stock_small || 0, stock_medium || 0, stock_large || 0, stock_xlarge || 0, stock_jumbo || 0,
           category_id, image_url
         ]);
       res.json({ id: (result as any).insertId });
@@ -906,8 +875,6 @@ async function startServer() {
       const { 
         name, egg_type, description, 
         price_per_tray, stock_tray, 
-        price_small, price_medium, price_large, price_xlarge, price_jumbo,
-        stock_small, stock_medium, stock_large, stock_xlarge, stock_jumbo,
         category_id, image_url 
       } = req.body;
 
@@ -925,17 +892,13 @@ async function startServer() {
         UPDATE products SET 
           name = ?, egg_type = ?, description = ?, 
           price = ?, price_per_tray = ?, price_per_dozen = ?, 
-          price_small = ?, price_medium = ?, price_large = ?, price_xlarge = ?, price_jumbo = ?,
           stock = ?, stock_tray = ?, stock_dozen = ?, 
-          stock_small = ?, stock_medium = ?, stock_large = ?, stock_xlarge = ?, stock_jumbo = ?,
           category_id = ?, image_url = ? 
         WHERE id = ?`,
         [
           name, egg_type, description, 
           0, price_per_tray || 0, 0, 
-          price_small || 0, price_medium || 0, price_large || 0, price_xlarge || 0, price_jumbo || 0,
           0, stock_tray || 0, 0,
-          stock_small || 0, stock_medium || 0, stock_large || 0, stock_xlarge || 0, stock_jumbo || 0,
           category_id, image_url, req.params.id
         ]);
       res.json({ success: true });
@@ -1202,10 +1165,10 @@ async function startServer() {
           const eggTypeSnapshot = product.egg_type || 'Standard';
           const pricePerTraySnapshot = product.price_per_tray || 0;
 
-          await conn.execute('INSERT INTO order_items (order_id, product_id, quantity, unit, price, egg_type, price_per_tray, price_per_dozen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [orderId, item.id, item.quantity, 'tray', priceSnapshot, eggTypeSnapshot, pricePerTraySnapshot, 0]);
+          await conn.execute('INSERT INTO order_items (order_id, product_id, quantity, unit, price, egg_type, price_per_tray) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [orderId, item.id, item.quantity, 'tray', priceSnapshot, eggTypeSnapshot, pricePerTraySnapshot]);
           
-          // 3. Update stock based on the unit type ordered
+          // 3. Update stock (Everything is now 'tray')
           await conn.execute('UPDATE products SET stock_tray = stock_tray - ? WHERE id = ?', [item.quantity, item.id]);
           
           // 4. Notify farmer about the new order

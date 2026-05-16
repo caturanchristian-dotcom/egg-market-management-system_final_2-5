@@ -59,7 +59,6 @@ export default function Marketplace() {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [productToRemove, setProductToRemove] = useState<{ id: number } | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [selectedUnits, setSelectedUnits] = useState<Record<number, 'tray' | 'small' | 'medium' | 'large' | 'xlarge' | 'jumbo'>>({});
   
   /**
    * Access control: Redirect staff roles away from the consumer marketplace
@@ -355,91 +354,22 @@ export default function Marketplace() {
                         <h3 className="font-bold text-emerald-900 text-base md:text-lg">{product.name}</h3>
                         <div className="text-right">
                           <span className="text-emerald-600 font-bold text-sm md:text-base">
-                            ₱{Number(selectedUnits[product.id] === 'small' ? product.price_small : 
-                                    selectedUnits[product.id] === 'medium' ? product.price_medium :
-                                    selectedUnits[product.id] === 'large' ? product.price_large :
-                                    selectedUnits[product.id] === 'xlarge' ? product.price_xlarge :
-                                    selectedUnits[product.id] === 'jumbo' ? product.price_jumbo :
-                                    product.price_per_tray).toFixed(2)}
+                            ₱{Number(product.price_per_tray).toFixed(2)}
                           </span>
                           <span className="text-[10px] text-emerald-400 block uppercase font-bold">
-                            / {selectedUnits[product.id] || 'tray'}
+                            / tray
                           </span>
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap gap-2 mb-4 mt-3">
+                      <div className="mb-4 mt-3">
                         {product.price_per_tray > 0 && (
-                          <button 
-                            onClick={() => setSelectedUnits({ ...selectedUnits, [product.id]: 'tray' })}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              (!selectedUnits[product.id] || selectedUnits[product.id] === 'tray') 
-                                ? 'bg-emerald-600 text-white border-emerald-600' 
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-300'
-                            }`}
-                          >
-                            Tray
-                          </button>
-                        )}
-                        {product.price_small > 0 && (
-                          <button 
-                            onClick={() => setSelectedUnits({ ...selectedUnits, [product.id]: 'small' })}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              selectedUnits[product.id] === 'small' 
-                                ? 'bg-emerald-600 text-white border-emerald-600' 
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-300'
-                            }`}
-                          >
-                            Small
-                          </button>
-                        )}
-                        {product.price_medium > 0 && (
-                          <button 
-                            onClick={() => setSelectedUnits({ ...selectedUnits, [product.id]: 'medium' })}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              selectedUnits[product.id] === 'medium' 
-                                ? 'bg-emerald-600 text-white border-emerald-600' 
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-300'
-                            }`}
-                          >
-                            Medium
-                          </button>
-                        )}
-                        {product.price_large > 0 && (
-                          <button 
-                            onClick={() => setSelectedUnits({ ...selectedUnits, [product.id]: 'large' })}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              selectedUnits[product.id] === 'large' 
-                                ? 'bg-emerald-600 text-white border-emerald-600' 
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-300'
-                            }`}
-                          >
-                            Large
-                          </button>
-                        )}
-                        {product.price_xlarge > 0 && (
-                          <button 
-                            onClick={() => setSelectedUnits({ ...selectedUnits, [product.id]: 'xlarge' })}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              selectedUnits[product.id] === 'xlarge' 
-                                ? 'bg-emerald-600 text-white border-emerald-600' 
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-300'
-                            }`}
-                          >
-                            XL
-                          </button>
-                        )}
-                        {product.price_jumbo > 0 && (
-                          <button 
-                            onClick={() => setSelectedUnits({ ...selectedUnits, [product.id]: 'jumbo' })}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                              selectedUnits[product.id] === 'jumbo' 
-                                ? 'bg-emerald-600 text-white border-emerald-600' 
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-300'
-                            }`}
-                          >
-                            Jumbo
-                          </button>
+                          <div className="flex flex-col gap-1 w-24">
+                            <div className="w-full px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-emerald-600 text-white border border-emerald-600 text-center">
+                              General Tray
+                            </div>
+                            <span className="text-[8px] text-emerald-400 text-center font-bold font-mono">Stock: {product.stock_tray}</span>
+                          </div>
                         )}
                       </div>
 
@@ -484,14 +414,8 @@ export default function Marketplace() {
                           
                           <button 
                             onClick={() => {
-                              const unit = selectedUnits[product.id] || 'tray';
-                              let stock = 0;
-                              if (unit === 'tray') stock = product.stock_tray || 0;
-                              else if (unit === 'small') stock = product.stock_small || 0;
-                              else if (unit === 'medium') stock = product.stock_medium || 0;
-                              else if (unit === 'large') stock = product.stock_large || 0;
-                              else if (unit === 'xlarge') stock = product.stock_xlarge || 0;
-                              else if (unit === 'jumbo') stock = product.stock_jumbo || 0;
+                              const unit = 'tray';
+                              const stock = product.stock_tray || 0;
 
                               if (stock > 0) {
                                 const success = addToCart(product, unit);
@@ -499,7 +423,7 @@ export default function Marketplace() {
                                   showNotify('Only one unique product can be in your cart at a time. Please complete your current order first, or add other products in your next order.', 'error');
                                 }
                               } else {
-                                showNotify('Selected size is out of stock', 'error');
+                                showNotify('Out of stock', 'error');
                               }
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-2xl shadow-lg shadow-emerald-100 transition-all active:scale-95 flex items-center gap-1.5 md:gap-2"
@@ -567,10 +491,10 @@ export default function Marketplace() {
                               {item.product.egg_type && (
                                 <span className="text-[9px] md:text-[10px] text-emerald-500 italic">{item.product.egg_type}</span>
                               )}
-                              <span className="bg-emerald-100 text-emerald-700 text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">{item.unit}</span>
+                              <span className="bg-emerald-100 text-emerald-700 text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">tray</span>
                             </div>
                           </div>
-                          <p className="text-emerald-500 text-[10px] md:text-xs mt-0.5 md:mt-1">₱{getItemPrice(item).toFixed(2)} / {item.unit}</p>
+                          <p className="text-emerald-500 text-[10px] md:text-xs mt-0.5 md:mt-1">₱{getItemPrice(item).toFixed(2)} / tray</p>
                           <div className="flex items-center gap-2 md:gap-3 mt-1.5 md:mt-2">
                             <div className="flex items-center gap-1.5 md:gap-2 bg-emerald-50 rounded-lg px-1.5 py-0.5 md:px-2 md:py-1">
                               <button 

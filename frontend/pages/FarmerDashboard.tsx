@@ -4,6 +4,7 @@ import { Product, Order, Category } from '../types';
 import { 
   Package, 
   Plus, 
+  Settings,
   Edit2, 
   Trash2, 
   ClipboardList, 
@@ -95,19 +96,36 @@ export default function FarmerDashboard() {
     description: '',
     price_per_tray: 0,
     stock_tray: 0,
-    price_small: 0,
-    price_medium: 0,
-    price_large: 0,
-    price_xlarge: 0,
-    price_jumbo: 0,
-    stock_small: 0,
-    stock_medium: 0,
-    stock_large: 0,
-    stock_xlarge: 0,
-    stock_jumbo: 0,
     category_id: 1,
     image_url: ''
   });
+
+  const [editingStockId, setEditingStockId] = useState<number | null>(null);
+  const [stockEditData, setStockEditData] = useState<any>({});
+
+  const handleQuickStockUpdate = async (product: Product) => {
+    try {
+      const response = await fetch(`/api/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...product,
+          ...stockEditData,
+          category_id: product.category_id // Ensure category_id is preserved
+        })
+      });
+
+      if (response.ok) {
+        showNotify('Stock updated successfully!', 'success');
+        setEditingStockId(null);
+        fetchData();
+      } else {
+        showNotify('Failed to update stock', 'error');
+      }
+    } catch (err) {
+      showNotify('An error occurred', 'error');
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'add-product') {
@@ -118,16 +136,6 @@ export default function FarmerDashboard() {
         description: '', 
         price_per_tray: 0,
         stock_tray: 0,
-        price_small: 0,
-        price_medium: 0,
-        price_large: 0,
-        price_xlarge: 0,
-        price_jumbo: 0,
-        stock_small: 0,
-        stock_medium: 0,
-        stock_large: 0,
-        stock_xlarge: 0,
-        stock_jumbo: 0,
         category_id: categories[0]?.id || 1, 
         image_url: '' 
       });
@@ -412,16 +420,6 @@ export default function FarmerDashboard() {
           description: '', 
           price_per_tray: 0,
           stock_tray: 0,
-          price_small: 0,
-          price_medium: 0,
-          price_large: 0,
-          price_xlarge: 0,
-          price_jumbo: 0,
-          stock_small: 0,
-          stock_medium: 0,
-          stock_large: 0,
-          stock_xlarge: 0,
-          stock_jumbo: 0,
           category_id: 1, 
           image_url: '' 
         });
@@ -467,10 +465,15 @@ export default function FarmerDashboard() {
     }
   };
 
+  const isLowStock = (product: Product) => {
+    // Threshold: 5 for trays
+    return product.price_per_tray > 0 && product.stock_tray < 5;
+  };
+
   const stats = {
     totalSales: orders.reduce((sum, o) => sum + (o.status === 'delivered' ? Number(o.total_amount) : 0), 0),
     activeOrders: orders.filter(o => o.status === 'pending' || o.status === 'processing').length,
-    lowStock: products.filter(p => p.stock_tray < 5).length,
+    lowStock: products.filter(p => isLowStock(p)).length,
     totalProducts: products.length
   };
 
@@ -562,13 +565,15 @@ export default function FarmerDashboard() {
             <h3 className="font-bold text-emerald-900 text-sm md:text-base">Inventory Alerts</h3>
           </div>
           <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-            {products.filter(p => p.stock_tray < 5).map(product => (
+            {products.filter(p => isLowStock(p)).map(product => (
               <div key={product.id} className="flex items-center justify-between p-3 md:p-4 bg-orange-50 rounded-xl md:rounded-2xl border border-orange-100">
                 <div className="flex items-center gap-2 md:gap-3">
                   <img src={product.image_url || EGG_PLACEHOLDER} className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl object-cover" referrerPolicy="no-referrer" />
                   <div>
                     <p className="font-bold text-emerald-900 text-xs md:text-sm">{product.name}</p>
-                    <p className="text-[10px] md:text-xs text-orange-600 font-medium">{product.stock_tray} trays remaining</p>
+                    <div className="flex flex-wrap gap-x-2">
+                       {product.price_per_tray > 0 && product.stock_tray < 5 && <span className="text-[10px] text-orange-600 font-medium">Tray: {product.stock_tray}</span>}
+                    </div>
                   </div>
                 </div>
                 <button 
@@ -580,16 +585,6 @@ export default function FarmerDashboard() {
                       description: product.description || '',
                       price_per_tray: product.price_per_tray || 0,
                       stock_tray: product.stock_tray || 0,
-                      price_small: product.price_small || 0,
-                      price_medium: product.price_medium || 0,
-                      price_large: product.price_large || 0,
-                      price_xlarge: product.price_xlarge || 0,
-                      price_jumbo: product.price_jumbo || 0,
-                      stock_small: product.stock_small || 0,
-                      stock_medium: product.stock_medium || 0,
-                      stock_large: product.stock_large || 0,
-                      stock_xlarge: product.stock_xlarge || 0,
-                      stock_jumbo: product.stock_jumbo || 0,
                       category_id: product.category_id || 1,
                       image_url: product.image_url || ''
                     });
@@ -804,16 +799,6 @@ export default function FarmerDashboard() {
               description: '', 
               price_per_tray: 0,
               stock_tray: 0,
-              price_small: 0,
-              price_medium: 0,
-              price_large: 0,
-              price_xlarge: 0,
-              price_jumbo: 0,
-              stock_small: 0,
-              stock_medium: 0,
-              stock_large: 0,
-              stock_xlarge: 0,
-              stock_jumbo: 0,
               category_id: 1, 
               image_url: '' 
             });
@@ -840,16 +825,6 @@ export default function FarmerDashboard() {
                       description: product.description || '',
                       price_per_tray: product.price_per_tray || 0,
                       stock_tray: product.stock_tray || 0,
-                      price_small: product.price_small || 0,
-                      price_medium: product.price_medium || 0,
-                      price_large: product.price_large || 0,
-                      price_xlarge: product.price_xlarge || 0,
-                      price_jumbo: product.price_jumbo || 0,
-                      stock_small: product.stock_small || 0,
-                      stock_medium: product.stock_medium || 0,
-                      stock_large: product.stock_large || 0,
-                      stock_xlarge: product.stock_xlarge || 0,
-                      stock_jumbo: product.stock_jumbo || 0,
                       category_id: product.category_id || 1,
                       image_url: product.image_url || ''
                     });
@@ -883,8 +858,8 @@ export default function FarmerDashboard() {
               <div className="flex items-center justify-between pt-4 border-t border-emerald-50">
                 <span className="text-[10px] font-bold uppercase text-emerald-400 tracking-wider">{product.category_name}</span>
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`text-xs font-bold ${product.stock_tray < 5 ? 'text-orange-500' : 'text-emerald-700'}`}>
-                    Stock: {product.stock_tray} trays
+                  <span className={`text-[10px] font-bold ${product.price_per_tray > 0 && product.stock_tray < 5 ? 'text-orange-500' : 'text-emerald-700'}`}>
+                    {product.stock_tray} trays
                   </span>
                 </div>
               </div>
@@ -1160,62 +1135,86 @@ export default function FarmerDashboard() {
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs text-emerald-600 font-bold">₱{Number(product.price_per_tray).toFixed(2)}/tray</span>
-                    {(product.price_small || 0) > 0 && <span className="text-[10px] text-emerald-400">S: ₱{Number(product.price_small).toFixed(2)}</span>}
-                    {(product.price_medium || 0) > 0 && <span className="text-[10px] text-emerald-400">M: ₱{Number(product.price_medium).toFixed(2)}</span>}
-                    {(product.price_large || 0) > 0 && <span className="text-[10px] text-emerald-400">L: ₱{Number(product.price_large).toFixed(2)}</span>}
-                    {(product.price_xlarge || 0) > 0 && <span className="text-[10px] text-emerald-400">XL: ₱{Number(product.price_xlarge).toFixed(2)}</span>}
-                    {(product.price_jumbo || 0) > 0 && <span className="text-[10px] text-emerald-400">J: ₱{Number(product.price_jumbo).toFixed(2)}</span>}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-emerald-500">{product.category_name}</td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
-                    <span className={`font-bold text-sm ${product.stock_tray < 5 ? 'text-orange-600' : 'text-emerald-900'}`}>
-                      {product.stock_tray} trays
-                    </span>
-                    {(product.stock_small || 0) > 0 && <span className="text-[10px] text-emerald-400">S: {product.stock_small} pcs</span>}
-                    {(product.stock_medium || 0) > 0 && <span className="text-[10px] text-emerald-400">M: {product.stock_medium} pcs</span>}
-                    {(product.stock_large || 0) > 0 && <span className="text-[10px] text-emerald-400">L: {product.stock_large} pcs</span>}
-                    {(product.stock_xlarge || 0) > 0 && <span className="text-[10px] text-emerald-400">XL: {product.stock_xlarge} pcs</span>}
-                    {(product.stock_jumbo || 0) > 0 && <span className="text-[10px] text-emerald-400">J: {product.stock_jumbo} pcs</span>}
-                  </div>
+                  {editingStockId === product.id ? (
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-emerald-500 w-12 uppercase">Tray</span>
+                          <input 
+                            type="number" 
+                            className="w-20 px-2 py-1 text-xs border border-emerald-100 rounded bg-emerald-50"
+                            value={stockEditData.stock_tray}
+                            onChange={e => setStockEditData({ ...stockEditData, stock_tray: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                    </div>
+                  ) : (
+                     <div className="flex flex-col gap-1 min-w-[120px]">
+                       <span className={`font-bold text-sm ${product.price_per_tray > 0 && product.stock_tray < 5 ? 'text-orange-600' : 'text-emerald-900'}`}>
+                         {product.stock_tray} general trays
+                       </span>
+                     </div>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                    product.stock_tray < 5 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
+                    isLowStock(product) ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {product.stock_tray < 5 ? 'Low Stock' : 'In Stock'}
+                    {isLowStock(product) ? 'Low Stock' : 'In Stock'}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <button 
-                  onClick={() => {
-                      setEditingProduct(product);
-                      setFormData({
-                        name: product.name,
-                        egg_type: product.egg_type || '',
-                        description: product.description || '',
-                        price_per_tray: product.price_per_tray || 0,
-                        stock_tray: product.stock_tray || 0,
-                        price_small: product.price_small || 0,
-                        price_medium: product.price_medium || 0,
-                        price_large: product.price_large || 0,
-                        price_xlarge: product.price_xlarge || 0,
-                        price_jumbo: product.price_jumbo || 0,
-                        stock_small: product.stock_small || 0,
-                        stock_medium: product.stock_medium || 0,
-                        stock_large: product.stock_large || 0,
-                        stock_xlarge: product.stock_xlarge || 0,
-                        stock_jumbo: product.stock_jumbo || 0,
-                        category_id: product.category_id || 1,
-                        image_url: product.image_url || ''
-                      });
-                      setShowAddModal(true);
-                    }}
-                    className="text-emerald-600 hover:text-emerald-700 font-bold text-xs hover:underline"
-                  >
-                    Restock
-                  </button>
+                  {editingStockId === product.id ? (
+                    <div className="flex flex-col gap-2">
+                      <button 
+                        onClick={() => handleQuickStockUpdate(product)}
+                        className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-emerald-700 transition-all font-mono"
+                      >
+                        SAVE
+                      </button>
+                      <button 
+                        onClick={() => setEditingStockId(null)}
+                        className="text-emerald-400 hover:text-emerald-600 font-bold text-[10px] uppercase font-mono"
+                      >
+                        CANCEL
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <button 
+                        onClick={() => {
+                          setEditingStockId(product.id);
+                          setStockEditData({
+                            stock_tray: product.stock_tray
+                          });
+                        }}
+                        className="text-emerald-600 hover:text-emerald-700 font-bold text-xs hover:underline flex items-center gap-1"
+                      >
+                        <Edit2 size={12} /> Edit Stock
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setEditingProduct(product);
+                          setFormData({
+                            name: product.name,
+                            egg_type: product.egg_type || '',
+                            description: product.description || '',
+                            price_per_tray: product.price_per_tray || 0,
+                            stock_tray: product.stock_tray || 0,
+                            category_id: product.category_id || 1,
+                            image_url: product.image_url || ''
+                          });
+                          setShowAddModal(true);
+                        }}
+                        className="text-emerald-400 hover:text-emerald-500 font-bold text-[10px] hover:underline flex items-center gap-1"
+                      >
+                        <Settings size={12} /> Detailed Edit
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -1233,9 +1232,9 @@ export default function FarmerDashboard() {
                 <div className="flex justify-between items-start">
                   <h3 className="font-bold text-emerald-900">{product.name}</h3>
                   <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                    product.stock_tray < 5 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
+                    isLowStock(product) ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {product.stock_tray < 5 ? 'Low' : 'OK'}
+                    {isLowStock(product) ? 'Low' : 'OK'}
                   </span>
                 </div>
                 <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">{product.category_name}</p>
@@ -1245,54 +1244,60 @@ export default function FarmerDashboard() {
             <div className="grid grid-cols-2 gap-4 py-4 border-y border-emerald-50">
               <div>
                 <p className="text-[10px] text-emerald-500 uppercase font-bold mb-1">Stock Levels</p>
-                <div className="space-y-1">
-                  <p className={`text-xs font-bold ${product.stock_tray < 5 ? 'text-orange-600' : 'text-emerald-900'}`}>{product.stock_tray} Trays</p>
-                  {(product.stock_small || 0) > 0 && <p className="text-[10px] text-emerald-500">S: {product.stock_small} pcs</p>}
-                  {(product.stock_medium || 0) > 0 && <p className="text-[10px] text-emerald-500">M: {product.stock_medium} pcs</p>}
-                  {(product.stock_large || 0) > 0 && <p className="text-[10px] text-emerald-500">L: {product.stock_large} pcs</p>}
-                  {(product.stock_jumbo || 0) > 0 && <p className="text-[10px] text-emerald-500">J: {product.stock_jumbo} pcs</p>}
-                </div>
+                {editingStockId === product.id ? (
+                  <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase w-12">General Tray</span>
+                          <input 
+                            type="number" 
+                            className="w-16 px-1 py-0.5 text-[10px] border border-emerald-100 rounded bg-emerald-50 text-emerald-700"
+                            value={stockEditData.stock_tray || 0}
+                            onChange={e => setStockEditData({ ...stockEditData, stock_tray: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className={`text-xs font-bold ${product.price_per_tray > 0 && product.stock_tray < 5 ? 'text-orange-600' : 'text-emerald-900'}`}>{product.stock_tray} Gen Trays</p>
+                  </div>
+                )}
               </div>
               <div>
                 <p className="text-[10px] text-emerald-500 uppercase font-bold mb-1">Pricing</p>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-emerald-900">₱{Number(product.price_per_tray).toFixed(2)}/t</p>
-                  {(product.price_small || 0) > 0 && <p className="text-[10px] text-emerald-500">S: ₱{product.price_small}</p>}
-                  {(product.price_medium || 0) > 0 && <p className="text-[10px] text-emerald-500">M: ₱{product.price_medium}</p>}
-                  {(product.price_large || 0) > 0 && <p className="text-[10px] text-emerald-500">L: ₱{product.price_large}</p>}
-                  {(product.price_jumbo || 0) > 0 && <p className="text-[10px] text-emerald-500">J: ₱{product.price_jumbo}</p>}
                 </div>
               </div>
             </div>
 
-            <button 
-              onClick={() => {
-                setEditingProduct(product);
-                setFormData({
-                  name: product.name,
-                  egg_type: product.egg_type || '',
-                  description: product.description || '',
-                  price_per_tray: product.price_per_tray || 0,
-                  stock_tray: product.stock_tray || 0,
-                  price_small: product.price_small || 0,
-                  price_medium: product.price_medium || 0,
-                  price_large: product.price_large || 0,
-                  price_xlarge: product.price_xlarge || 0,
-                  price_jumbo: product.price_jumbo || 0,
-                  stock_small: product.stock_small || 0,
-                  stock_medium: product.stock_medium || 0,
-                  stock_large: product.stock_large || 0,
-                  stock_xlarge: product.stock_xlarge || 0,
-                  stock_jumbo: product.stock_jumbo || 0,
-                  category_id: product.category_id || 1,
-                  image_url: product.image_url || ''
-                });
-                setShowAddModal(true);
-              }}
-              className="w-full bg-emerald-50 text-emerald-700 py-3 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-all"
-            >
-              Update Stock & Pricing
-            </button>
+            {editingStockId === product.id ? (
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleQuickStockUpdate(product)}
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-100"
+                >
+                  Save Stock
+                </button>
+                <button 
+                  onClick={() => setEditingStockId(null)}
+                  className="flex-1 bg-emerald-50 text-emerald-600 py-3 rounded-xl font-bold text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => {
+                  setEditingStockId(product.id);
+                  setStockEditData({
+                    stock_tray: product.stock_tray
+                  });
+                }}
+                className="w-full bg-emerald-50 text-emerald-700 py-3 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
+              >
+                <Edit2 size={16} /> Update Stock Levels
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -1913,111 +1918,7 @@ export default function FarmerDashboard() {
                 </div>
 
                 <div className="col-span-2 border-t border-emerald-50 pt-4">
-                  <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-widest mb-3">Eggs by Size (Unit Pricing)</h4>
-                </div>
-
-                {/* Small Size */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Small Price (₱)</label>
-                  <input 
-                    type="number" step="0.01"
-                    value={formData.price_small}
-                    onChange={e => setFormData({ ...formData, price_small: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Small Stock (pcs)</label>
-                  <input 
-                    type="number"
-                    value={formData.stock_small}
-                    onChange={e => setFormData({ ...formData, stock_small: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-
-                {/* Medium Size */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Medium Price (₱)</label>
-                  <input 
-                    type="number" step="0.01"
-                    value={formData.price_medium}
-                    onChange={e => setFormData({ ...formData, price_medium: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Medium Stock (pcs)</label>
-                  <input 
-                    type="number"
-                    value={formData.stock_medium}
-                    onChange={e => setFormData({ ...formData, stock_medium: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-
-                {/* Large Size */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Large Price (₱)</label>
-                  <input 
-                    type="number" step="0.01"
-                    value={formData.price_large}
-                    onChange={e => setFormData({ ...formData, price_large: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Large Stock (pcs)</label>
-                  <input 
-                    type="number"
-                    value={formData.stock_large}
-                    onChange={e => setFormData({ ...formData, stock_large: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-
-                {/* Jumbo Size */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Extra Large Price (₱)</label>
-                  <input 
-                    type="number" step="0.01"
-                    value={formData.price_xlarge}
-                    onChange={e => setFormData({ ...formData, price_xlarge: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Extra Large Stock (pcs)</label>
-                  <input 
-                    type="number"
-                    value={formData.stock_xlarge}
-                    onChange={e => setFormData({ ...formData, stock_xlarge: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-
-                {/* Jumbo Size */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Jumbo Price (₱)</label>
-                  <input 
-                    type="number" step="0.01"
-                    value={formData.price_jumbo}
-                    onChange={e => setFormData({ ...formData, price_jumbo: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase">Jumbo Stock (pcs)</label>
-                  <input 
-                    type="number"
-                    value={formData.stock_jumbo}
-                    onChange={e => setFormData({ ...formData, stock_jumbo: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                  />
-                </div>
-
-                <div className="col-span-2 border-t border-emerald-50 pt-4">
-                  <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-widest mb-3">Bulk Offering</h4>
+                  <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-widest mb-3">Pricing & Inventory</h4>
                 </div>
 
                 <div className="space-y-1">

@@ -9,7 +9,7 @@ import { Product } from '../types';
 interface CartItem {
   product: Product;
   quantity: number;
-  unit: 'tray' | 'small' | 'medium' | 'large' | 'xlarge' | 'jumbo';
+  unit: 'tray';
 }
 
 /**
@@ -87,15 +87,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
    * Retrieves the dynamic price per unit based on product settings
    */
   const getItemPrice = (item: { product: Product, unit: CartItem['unit'] }) => {
-    switch (item.unit) {
-      case 'small': return item.product.price_small || 0;
-      case 'medium': return item.product.price_medium || 0;
-      case 'large': return item.product.price_large || 0;
-      case 'xlarge': return item.product.price_xlarge || 0;
-      case 'jumbo': return item.product.price_jumbo || 0;
-      case 'tray': return item.product.price_per_tray;
-      default: return item.product.price_per_tray;
-    }
+    return item.product.price_per_tray;
   };
 
   /**
@@ -115,15 +107,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         return prev.map(item => {
           if (item.product.id === product.id && item.unit === unit) {
-            let maxQty = 0;
-            switch (unit) {
-              case 'small': maxQty = product.stock_small || 0; break;
-              case 'medium': maxQty = product.stock_medium || 0; break;
-              case 'large': maxQty = product.stock_large || 0; break;
-              case 'xlarge': maxQty = product.stock_xlarge || 0; break;
-              case 'jumbo': maxQty = product.stock_jumbo || 0; break;
-              case 'tray': maxQty = product.stock_tray || 0; break;
-            }
+            const maxQty = product.stock_tray || 0;
             // Cap at available stock
             return { ...item, quantity: Math.min(item.quantity + 1, maxQty) };
           }
@@ -148,15 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = (productId: number, unit: CartItem['unit'], delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.product.id === productId && item.unit === unit) {
-        let maxQty = 0;
-        switch (unit) {
-          case 'small': maxQty = item.product.stock_small || 0; break;
-          case 'medium': maxQty = item.product.stock_medium || 0; break;
-          case 'large': maxQty = item.product.stock_large || 0; break;
-          case 'xlarge': maxQty = item.product.stock_xlarge || 0; break;
-          case 'jumbo': maxQty = item.product.stock_jumbo || 0; break;
-          case 'tray': maxQty = item.product.stock_tray || 0; break;
-        }
+        const maxQty = item.product.stock_tray || 0;
         // Clamp between 1 and max stock
         const newQty = Math.max(1, Math.min(item.quantity + delta, maxQty));
         return { ...item, quantity: newQty };

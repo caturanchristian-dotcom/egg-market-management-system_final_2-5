@@ -23,7 +23,14 @@ export default function CartDrawer() {
   const { showToast } = useNotifications();
   const navigate = useNavigate();
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-  const [productToRemove, setProductToRemove] = useState<{ id: number, unit: 'tray' | 'small' | 'medium' | 'large' | 'xlarge' | 'jumbo' } | null>(null);
+  const [productToRemove, setProductToRemove] = useState<{ 
+    id: number, 
+    unit: 'tray'
+  } | null>(null);
+
+  const formatUnit = (unit: string) => {
+    return 'General Tray';
+  };
 
   const handleCheckout = async () => {
     if (!user) {
@@ -163,9 +170,11 @@ export default function CartDrawer() {
                           </p>
                           
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-lg uppercase">{item.unit}</span>
-                              <span className="text-emerald-400 text-[10px]">₱{getItemPrice(item).toFixed(2)} / {item.unit}</span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-lg uppercase w-fit">
+                                {formatUnit(item.unit)}
+                              </span>
+                              <span className="text-emerald-400 text-[10px]">₱{getItemPrice(item).toFixed(2)} / tray</span>
                             </div>
                             
                             <div className="flex items-center gap-3 bg-emerald-50 rounded-xl px-2 py-1">
