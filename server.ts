@@ -374,9 +374,6 @@ async function startServer() {
   if (userCount === 0) {
     // Add default users (Admin, Farmers, Customer)
     await db.execute('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', ['Admin User', 'admin@eggmarket.com', 'admin123', 'admin']);
-    await db.execute('INSERT INTO users (name, email, password, role, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)', ['Farmer John', 'john@farmer.com', 'farmer123', 'farmer', 14.5995, 120.9842]);
-    await db.execute('INSERT INTO users (name, email, password, role, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)', ['Farmer Maria', 'maria@farmer.com', 'maria123', 'farmer', 14.6010, 120.9850]);
-    await db.execute('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', ['Customer Alice', 'alice@customer.com', 'customer123', 'customer']);
     
     // Add standard egg categories
     await db.execute('INSERT IGNORE INTO categories (name) VALUES (?)', ['Chicken Eggs']);
@@ -386,16 +383,6 @@ async function startServer() {
 
     const chickenCategory = await db.queryOne('SELECT id FROM categories WHERE name = ?', ['Chicken Eggs']);
     const organicCategory = await db.queryOne('SELECT id FROM categories WHERE name = ?', ['Organic Eggs']);
-
-    // Add initial product listings
-    if (chickenCategory) {
-      await db.execute('INSERT INTO products (farmer_id, name, description, price, stock, category_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-        [2, 'Fresh Farm Chicken Eggs', 'Grade A fresh chicken eggs from free-range chickens.', 12.50, 100, chickenCategory.id, 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&q=80&w=400']);
-    }
-    if (organicCategory) {
-      await db.execute('INSERT INTO products (farmer_id, name, description, price, stock, category_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-        [2, 'Organic Brown Eggs', 'Certified organic brown eggs rich in Omega-3.', 15.00, 50, organicCategory.id, 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&q=80&w=400']);
-    }
   }
 } catch (err) {
   console.error('Migration failed:', err);
