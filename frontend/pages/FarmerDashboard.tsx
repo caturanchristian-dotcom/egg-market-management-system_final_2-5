@@ -1172,7 +1172,7 @@ export default function FarmerDashboard() {
                   ) : (
                      <div className="flex flex-col gap-1 min-w-[120px]">
                        <span className={`font-bold text-sm ${product.price_per_tray > 0 && product.stock_tray < 5 ? 'text-orange-600' : 'text-emerald-900'}`}>
-                         {product.stock_tray} general trays
+                         {product.stock_tray} trays
                        </span>
                      </div>
                   )}
@@ -1266,7 +1266,7 @@ export default function FarmerDashboard() {
                 {editingStockId === product.id ? (
                   <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase w-12">General Tray</span>
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase w-12">Tray</span>
                           <input 
                             type="number" 
                             className="w-16 px-1 py-0.5 text-[10px] border border-emerald-100 rounded bg-emerald-50 text-emerald-700"

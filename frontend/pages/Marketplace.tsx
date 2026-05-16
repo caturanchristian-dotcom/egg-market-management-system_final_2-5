@@ -390,7 +390,7 @@ export default function Marketplace() {
                         {product.price_per_tray > 0 && (
                           <div className="flex flex-col gap-1 w-24">
                             <div className="w-full px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-emerald-600 text-white border border-emerald-600 text-center">
-                              General Tray
+                              Tray
                             </div>
                             <span className="text-[8px] text-emerald-400 text-center font-bold font-mono">Stock: {product.stock_tray}</span>
                           </div>

@@ -29,7 +29,7 @@ export default function CartDrawer() {
   } | null>(null);
 
   const formatUnit = (unit: string) => {
-    return 'General Tray';
+    return 'Tray';
   };
 
   const handleCheckout = async () => {
