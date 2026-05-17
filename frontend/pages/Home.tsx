@@ -316,7 +316,7 @@ export default function Home() {
                   />
                   <motion.img 
                     whileHover={{ scale: 1.05 }}
-                    src="https://pngimg.com/uploads/egg/egg_PNG40776.png" 
+                    src="https://images.unsplash.com/photo-1587486914673-2192e1e119c7?auto=format&fit=crop&q=80&w=500" 
                     className="rounded-[2rem] md:rounded-[3rem] w-full aspect-[3/4] object-cover shadow-2xl border-2 md:border-4 border-emerald-900" 
                     alt="Organic Brown Eggs" referrerPolicy="no-referrer" 
                   />
@@ -324,7 +324,7 @@ export default function Home() {
                 <div className="space-y-4 md:space-y-6">
                   <motion.img 
                     whileHover={{ scale: 1.05 }}
-                    src="https://www.allrecipes.com/thmb/SPgLtYP1TyEf0Gk1cyvkd_phlBs=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/Brown-Eggs-vs-White-Eggs-3x2-1-339233e9385c42e0a87ca370afc4ac2f.png" 
+                    src="https://images.unsplash.com/photo-1591465001581-2c57a07a7a30?auto=format&fit=crop&q=80&w=500" 
                     className="rounded-[2rem] md:rounded-[3rem] w-full aspect-[3/4] object-cover shadow-2xl border-2 md:border-4 border-emerald-900" 
                     alt="Egg Carton" referrerPolicy="no-referrer" 
                   />
@@ -384,7 +384,14 @@ export default function Home() {
                 </div>
                 <div className="p-6 md:p-10 space-y-4 md:space-y-6">
                   <div className="space-y-1 md:space-y-2">
-                    <p className="text-[8px] md:text-[10px] text-emerald-500 font-black uppercase tracking-[0.2em]">{product.category_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[8px] md:text-[10px] text-emerald-500 font-black uppercase tracking-[0.2em]">{product.category_name}</p>
+                      {product.egg_size && (
+                        <span className="text-[8px] md:text-[9px] bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          {product.egg_size}
+                        </span>
+                      )}
+                    </div>
                     <h4 className="font-display font-bold text-emerald-950 text-xl md:text-2xl group-hover:text-emerald-700 transition-colors">{product.name}</h4>
                   </div>
                   <div className="flex justify-between items-center pt-3 md:pt-4 border-t border-emerald-50">
@@ -456,7 +463,14 @@ export default function Home() {
                     
                     <div className="flex-1 text-center sm:text-left space-y-2 md:space-y-3">
                       <div>
-                        <p className="text-[8px] md:text-[10px] text-emerald-500 font-black uppercase tracking-widest">{product.category_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[8px] md:text-[10px] text-emerald-500 font-black uppercase tracking-widest">{product.category_name}</p>
+                          {product.egg_size && (
+                            <span className="text-[8px] bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 rounded uppercase font-mono">
+                              {product.egg_size}
+                            </span>
+                          )}
+                        </div>
                         <h4 className="text-xl md:text-2xl font-display font-bold text-emerald-950 group-hover:text-emerald-700 transition-colors">{product.name}</h4>
                       </div>
                       <div className="flex items-center justify-center sm:justify-start gap-4">
@@ -512,10 +526,15 @@ export default function Home() {
                       </div>
                       
                       <div className="space-y-4">
-                        <div className="space-y-2">
+                        <div className="flex flex-col items-center gap-1">
                            <p className="text-xs md:text-sm text-orange-600 font-black uppercase tracking-[0.3em]">{lowestPriceProduct.category_name}</p>
-                           <h4 className="text-3xl md:text-4xl font-display font-bold text-emerald-950 group-hover:text-orange-600 transition-colors">{lowestPriceProduct.name}</h4>
+                           {lowestPriceProduct.egg_size && (
+                             <span className="text-[10px] bg-orange-50 text-orange-600 font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">
+                               {lowestPriceProduct.egg_size}
+                             </span>
+                           )}
                         </div>
+                        <h4 className="text-3xl md:text-4xl font-display font-bold text-emerald-950 group-hover:text-orange-600 transition-colors">{lowestPriceProduct.name}</h4>
                         <div className="flex flex-col items-center">
                            <span className="text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest mb-1">Incredible Offer</span>
                            <div className="text-5xl md:text-6xl font-display font-black text-emerald-900 flex items-start">

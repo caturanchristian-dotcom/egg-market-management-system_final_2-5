@@ -558,9 +558,16 @@ export default function CustomerDashboard() {
                           <div>
                             <p className="font-bold text-emerald-900 text-sm md:text-base">{item.name}</p>
                             <div className="flex flex-col">
-                              {item.egg_type && (
-                                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Type: {item.egg_type}</p>
-                              )}
+                              <div className="flex flex-wrap items-center gap-2">
+                                {item.egg_type && (
+                                  <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Type: {item.egg_type}</p>
+                                )}
+                                {item.egg_size && (
+                                  <span className="text-[8px] bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    {item.egg_size}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs md:text-sm text-emerald-500">{item.quantity} tray(s) x ₱{Number(item.price_per_tray).toFixed(2)}</p>
                             </div>
                           </div>
