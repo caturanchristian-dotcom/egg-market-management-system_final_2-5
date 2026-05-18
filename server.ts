@@ -47,6 +47,9 @@ async function sendEmailNotification(toEmail: string, subject: string, body: str
   try {
     sgMail.setApiKey(SENDGRID_API_KEY);
     
+    // Create a plain text version by removing HTML tags (basic approach)
+    const textBody = body.replace(/<[^>]*>?/gm, '');
+
     // Wrap the body in a professional layout with a legal footer
     const fullBody = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
@@ -68,6 +71,7 @@ async function sendEmailNotification(toEmail: string, subject: string, body: str
       to: toEmail,
       from: SENDGRID_FROM_EMAIL,
       subject: subject,
+      text: textBody,
       html: fullBody,
     };
     await sgMail.send(msg);
@@ -595,6 +599,25 @@ async function startServer() {
 
       // Return user data without sensitive password field
       const { password: _, ...userWithoutPassword } = user;
+      
+      // Send Welcome Email
+      const welcomeSubject = 'Welcome to EggMarket!';
+      const welcomeBody = `
+        <h2 style="color: #059669;">Welcome to the Family, ${user.name}!</h2>
+        <p>Thank you for joining EggMarket. We are excited to have you on board.</p>
+        <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0;"><strong>Your Account Details:</strong></p>
+          <ul style="margin: 10px 0 0; padding-left: 20px;">
+            <li><strong>Email:</strong> ${user.email}</li>
+            <li><strong>Role:</strong> <span style="text-transform: capitalize;">${user.role}</span></li>
+          </ul>
+        </div>
+        <p>You can now start browsing the marketplace and connecting with local farmers for the freshest eggs.</p>
+        <p>If you have any questions, feel free to reply to this email.</p>
+      `;
+      // Send asynchronously
+      sendEmailNotification(user.email, welcomeSubject, welcomeBody);
+
       res.json(userWithoutPassword);
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -1188,6 +1211,10 @@ async function startServer() {
         const [result] = await conn.execute('INSERT INTO orders (customer_id, total_amount) VALUES (?, ?)', [customer_id, total_amount]);
         orderId = (result as any).insertId;
 
+        // Fetch customer info early for notifications
+        const [customers] = await conn.query('SELECT email, name FROM users WHERE id = ?', [customer_id]) as any[];
+        const customer = customers.length > 0 ? customers[0] : null;
+
         const farmersToNotify = new Set<number>();
 
         // 2. Process each item in the cart
@@ -1216,7 +1243,23 @@ async function startServer() {
           const farmerMessage = `New order for ${item.quantity} tray(s) of ${product.name}`;
           await conn.execute('INSERT INTO notifications (user_id, message) VALUES (?, ?)', [product.farmer_id, farmerMessage]);
           
-          sendRealTimeNotification(product.farmer_id, farmerMessage);
+          // --- Farmer Notification Email ---
+          const [farmers] = await conn.query('SELECT email, name FROM users WHERE id = ?', [product.farmer_id]) as any[];
+          const farmer = farmers.length > 0 ? farmers[0] : null;
+          if (farmer) {
+            const farmerEmailSubject = `New Order Received: ${item.quantity} tray(s) of ${product.name}`;
+            const farmerEmailBody = `
+              <h2 style="color: #059669;">Hello ${farmer.name}!</h2>
+              <p>Great news! You have received a new order for your product: <strong>${product.name}</strong>.</p>
+              <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Quantity:</strong> ${item.quantity} tray(s)</p>
+                <p style="margin: 4px 0 0;"><strong>Customer:</strong> ${customer?.name || 'A customer'}</p>
+                <p style="margin: 4px 0 0;"><strong>Order ID:</strong> #${orderId}</p>
+              </div>
+              <p>Please log in to your dashboard to process this order.</p>
+            `;
+            sendEmailNotification(farmer.email, farmerEmailSubject, farmerEmailBody);
+          }
         }
 
         // Notify all involved farmers to refresh their dashboards
@@ -1228,29 +1271,23 @@ async function startServer() {
         broadcastProductUpdate();
 
         // Notify customer that order is pending
-        const [customers] = await conn.query('SELECT email, name FROM users WHERE id = ?', [customer_id]) as any[];
-        const customer = customers.length > 0 ? customers[0] : null;
         const customerMessage = `Your order #${orderId} has been placed and is now pending.`;
         await conn.execute('INSERT INTO notifications (user_id, message) VALUES (?, ?)', [customer_id, customerMessage]);
         
         sendRealTimeNotification(customer_id, customerMessage);
 
-        // --- Gmail Notification ---
+        // --- Order Placed Email Notification ---
         if (customer) {
           const emailSubject = `Order Placed: #${orderId} is now PENDING`;
           const emailBody = `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e8ed; border-radius: 12px; padding: 24px;">
-              <h2 style="color: #059669;">Hello ${customer.name}!</h2>
-              <p style="font-size: 16px; color: #374151;">Grateful news! Your order has been successfully placed.</p>
-              <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0;">
-                <p style="margin: 0; font-weight: bold; color: #065f46;">Order #${orderId}</p>
-                <p style="margin: 4px 0 0; color: #047857;">Status: <strong style="text-transform: uppercase;">PENDING</strong></p>
-                <p style="margin: 4px 0 0; color: #047857;">Total Amount: ₱${total_amount.toFixed(2)}</p>
-              </div>
-              <p style="color: #6b7280; font-size: 14px;">Our farmers are currently reviewing your order. You will receive another notification once it's being processed.</p>
-              <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 24px 0;" />
-              <p style="color: #9ca3af; font-size: 12px; text-align: center;">This is an automated notification from EggMarket.</p>
+            <h2 style="color: #059669;">Hello ${customer.name}!</h2>
+            <p style="font-size: 16px; color: #374151;">Great news! Your order has been successfully placed.</p>
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0;">
+              <p style="margin: 0; font-weight: bold; color: #065f46;">Order #${orderId}</p>
+              <p style="margin: 4px 0 0; color: #047857;">Status: <strong style="text-transform: uppercase;">PENDING</strong></p>
+              <p style="margin: 4px 0 0; color: #047857;">Total Amount: ₱${total_amount.toFixed(2)}</p>
             </div>
+            <p style="color: #6b7280; font-size: 14px;">Our farmers are currently reviewing your order. You will receive another notification once it's being processed.</p>
           `;
           sendEmailNotification(customer.email, emailSubject, emailBody);
         }
@@ -1365,20 +1402,44 @@ async function startServer() {
       sendRealTimeNotification(orderData.customer_id, message);
       if (io) io.to(`user:${orderData.customer_id}`).emit('order_updated', { order_id: req.params.id, status });
 
-      // --- Gmail Notification ---
-      const emailSubject = `Order Update: #${req.params.id} is now ${status.toUpperCase()}`;
+      // --- Status Update Email Notification ---
+      let statusDisplay = status;
+      let statusMessage = "Your order status has been updated.";
+      let statusColor = "#10b981";
+
+      // Match statuses exactly as requested (handling common typos)
+      const normalizedStatus = status.toLowerCase();
+      if (normalizedStatus === 'pending') {
+        statusDisplay = "Pending";
+        statusMessage = "Your order has been placed and is currently awaiting farmer confirmation.";
+        statusColor = "#f59e0b";
+      } else if (normalizedStatus === 'proccessing' || normalizedStatus === 'processing') {
+        statusDisplay = "Processing";
+        statusMessage = "The farmer has confirmed your order and is now preparing your eggs.";
+        statusColor = "#3b82f6";
+      } else if (normalizedStatus === 'on the way') {
+        statusDisplay = "On the Way";
+        statusMessage = "Your order has left the farm and is currently being delivered to you.";
+        statusColor = "#8b5cf6";
+      } else if (normalizedStatus === 'delevered' || normalizedStatus === 'delivered') {
+        statusDisplay = "Delivered";
+        statusMessage = "Success! Your order has been delivered. We hope you enjoy your fresh eggs!";
+        statusColor = "#10b981";
+      } else if (normalizedStatus === 'cancelled') {
+        statusDisplay = "Cancelled";
+        statusMessage = "Your order has been cancelled. If this was unexpected, please contact the farmer or support.";
+        statusColor = "#ef4444";
+      }
+
+      const emailSubject = `Order Update: #${req.params.id} is now ${statusDisplay.toUpperCase()}`;
       const emailBody = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e8ed; border-radius: 12px; padding: 24px;">
-          <h2 style="color: #059669;">Hello ${orderData.customer_name}!</h2>
-          <p style="font-size: 16px; color: #374151;">Grateful news! Your order status has been updated.</p>
-          <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0;">
-            <p style="margin: 0; font-weight: bold; color: #065f46;">Order #${req.params.id}</p>
-            <p style="margin: 4px 0 0; color: #047857;">New Status: <strong style="text-transform: uppercase;">${status}</strong></p>
-          </div>
-          <p style="color: #6b7280; font-size: 14px;">You can track your order in detail by visiting your dashboard in the EggMarket app.</p>
-          <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 24px 0;" />
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">This is an automated notification from EggMarket.</p>
+        <h2 style="color: ${statusColor};">Hello ${orderData.customer_name}!</h2>
+        <p style="font-size: 16px; color: #374151;">${statusMessage}</p>
+        <div style="background-color: #f9fafb; border-left: 4px solid ${statusColor}; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #111827;">Order #${req.params.id}</p>
+          <p style="margin: 4px 0 0; color: #374151;">New Status: <strong style="text-transform: uppercase; color: ${statusColor};">${statusDisplay}</strong></p>
         </div>
+        <p style="color: #6b7280; font-size: 14px;">You can track your order in detail by visiting your dashboard in the EggMarket app.</p>
       `;
       
       // Send asynchronously to avoid blocking the response
