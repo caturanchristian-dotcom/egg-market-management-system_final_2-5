@@ -668,18 +668,14 @@ async function startServer() {
     // Try to send email
     const subject = 'Password Reset Token - EggMarket';
     const body = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e8ed; border-radius: 12px;">
-        <h2 style="color: #059669;">Password Reset Request</h2>
-        <p>Hello ${user.name},</p>
-        <p>We received a request to reset your password. Use the code below to proceed:</p>
-        <div style="background: #f0fdf4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #059669; border-radius: 8px; margin: 20px 0;">
-          ${token}
-        </div>
-        <p>This code will expire in 1 hour.</p>
-        <p>If you didn't request this, you can safely ignore this email.</p>
-        <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 20px 0;" />
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">EggMarket Egg Valley System</p>
+      <h2 style="color: #059669;">Password Reset Request</h2>
+      <p>Hello ${user.name},</p>
+      <p>We received a request to reset your password. Use the code below to proceed:</p>
+      <div style="background: #f9fafb; border: 1px dashed #10b981; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #059669; border-radius: 12px; margin: 25px 0;">
+        ${token}
       </div>
+      <p>This code will expire in 1 hour. If you did not request this, you can safely ignore this email.</p>
+      <p>To keep your account secure, never share this code with anyone.</p>
     `;
     
     await sendEmailNotification(user.email, subject, body);
@@ -699,6 +695,10 @@ async function startServer() {
    */
   app.post('/api/auth/reset-password', asyncHandler(async (req, res) => {
     const { email, token, newPassword } = req.body;
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
     
     const user = await db.queryOne('SELECT id FROM users WHERE email = ? AND reset_token = ? AND reset_token_expires > NOW()', 
       [email, token]);

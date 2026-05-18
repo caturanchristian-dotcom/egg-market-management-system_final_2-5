@@ -31,7 +31,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [successInfo, setSuccessInfo] = useState('');
-  const [debugToken, setDebugToken] = useState('');
+  const [resetToken, setResetToken] = useState('');
   
   // Custom auth hook for session management
   const { login, user, refreshUser } = useAuth();
@@ -179,7 +179,7 @@ export default function AuthPage() {
       if (response.ok) {
         setSuccessInfo(data.message);
         if (data.debugToken) {
-          setDebugToken(data.debugToken);
+          setResetToken(data.debugToken);
         }
         setAuthMode('reset');
       } else {
@@ -206,7 +206,7 @@ export default function AuthPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           email: formData.email, 
-          token: debugToken,
+          token: resetToken,
           newPassword: formData.password 
         }),
       });
@@ -537,9 +537,9 @@ export default function AuthPage() {
                   <input 
                     type="text" 
                     required
-                    value={debugToken}
-                    onChange={(e) => setDebugToken(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-mono tracking-widest"
+                    value={resetToken}
+                    onChange={(e) => setResetToken(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-mono tracking-widest text-center text-lg"
                     placeholder="123456"
                     maxLength={6}
                   />
