@@ -92,13 +92,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Adds a product to the cart or increments its quantity if variant (Product ID + Unit) already exists.
-   * Business Rule: Only one unique product allowed in the cart at a time.
+   * Business Rule: Multiple products allowed but only from ONE unique farmer at a time.
    */
   const addToCart = (product: Product, unit: CartItem['unit'] = 'tray'): boolean => {
-    // Check if cart already has a DIFFERENT product
-    const differentProductInCart = cart.some(item => item.product.id !== product.id);
+    // Check if cart already has items from a DIFFERENT farmer
+    const itemsFromDifferentFarmer = cart.some(item => item.product.farmer_id !== product.farmer_id);
     
-    if (differentProductInCart) {
+    if (itemsFromDifferentFarmer) {
       return false; // Indicate failure to caller
     }
 

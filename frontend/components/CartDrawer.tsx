@@ -129,14 +129,23 @@ export default function CartDrawer() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* One-product limit reminder */}
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-start gap-3">
-                      <div className="bg-emerald-600/10 p-2 rounded-xl text-emerald-600 mt-0.5">
-                        <ShoppingCart size={16} />
+                    {/* Single farmer checkout note */}
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-emerald-600/10 p-2 rounded-xl text-emerald-600 mt-0.5">
+                          <ShoppingCart size={16} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-emerald-900">Single Farmer Checkout</p>
+                          <p className="text-[10px] text-emerald-600 mt-0.5 leading-relaxed">
+                            <span className="font-bold">Note:</span> You can add multiple products to your cart, but they must all come from the same farmer to ensure consolidated shipping and freshness.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-emerald-900">One Product Policy</p>
-                        <p className="text-[10px] text-emerald-600 mt-0.5">To ensure fresh and efficient delivery, we limit checkouts to one product type at a time. Please finish this order before adding a different product for your next order.</p>
+                      <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl">
+                        <p className="text-[10px] text-orange-700 leading-relaxed font-medium">
+                          <span className="font-bold uppercase">Caution:</span> Adding a product from a different farmer will be blocked. Please complete your current order or clear your cart first.
+                        </p>
                       </div>
                     </div>
                     {cart.map(item => (

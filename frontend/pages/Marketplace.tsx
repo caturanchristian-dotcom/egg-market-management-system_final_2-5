@@ -460,7 +460,7 @@ export default function Marketplace() {
                               if (stock > 0) {
                                 const success = addToCart(product, unit);
                                 if (!success) {
-                                  showNotify('Only one unique product can be in your cart at a time. Please complete your current order first, or add other products in your next order.', 'error');
+                                  showNotify('To ensure fresh delivery, we only support orders from one farmer at a time. Please complete your current order or clear your cart to add products from a different supplier.', 'error');
                                 }
                               } else {
                                 showNotify('Out of stock', 'error');
@@ -506,14 +506,21 @@ export default function Marketplace() {
                   </div>
                 ) : (
                   <div className="space-y-3 md:space-y-4">
-                    {/* One-product limit reminder */}
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-start gap-2 mb-2">
-                      <div className="bg-emerald-600/10 p-1.5 rounded-lg text-emerald-600 mt-0.5">
-                        <ShoppingCart size={14} />
+                    {/* Single farmer order reminder */}
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 space-y-2 mb-2">
+                      <div className="flex items-start gap-2">
+                        <div className="bg-emerald-600/10 p-1.5 rounded-lg text-emerald-600 mt-0.5">
+                          <ShoppingCart size={14} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">Single Farmer Order</p>
+                          <p className="text-[9px] text-emerald-600 mt-0.5 leading-relaxed">Note: Cart items must be from the same farmer.</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">One Product Policy</p>
-                        <p className="text-[9px] text-emerald-600 mt-0.5 leading-relaxed">Limit: One product type per order. Please complete this order before adding others.</p>
+                      <div className="bg-orange-50 border border-orange-100 p-2 rounded-lg">
+                        <p className="text-[9px] text-orange-700 leading-relaxed font-medium">
+                          Caution: Mixing different farmers is not allowed.
+                        </p>
                       </div>
                     </div>
                     {cart.map(item => (
