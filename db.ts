@@ -18,7 +18,9 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  decimalNumbers: true
+  decimalNumbers: true,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000
 });
 
 // Trace connection events for debugging

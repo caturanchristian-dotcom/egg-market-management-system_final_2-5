@@ -1455,10 +1455,10 @@ async function startServer() {
    * GET /api/notifications/:userId
    * Fetches latest 50 notifications for a user
    */
-  app.get('/api/notifications/:userId', async (req, res) => {
+  app.get('/api/notifications/:userId', asyncHandler(async (req, res) => {
     const notifications = await db.query('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [req.params.userId]);
     res.json(notifications);
-  });
+  }));
 
   // --- Farmer Verification Routes ---
 
@@ -1466,53 +1466,50 @@ async function startServer() {
    * POST /api/farmer/verify
    * Allows a farmer to upload a verification document
    */
-  app.post('/api/farmer/verify', upload.single('document'), async (req, res) => {
+  app.post('/api/farmer/verify', upload.single('document'), asyncHandler(async (req, res) => {
     const { userId } = req.body;
     if (!req.file) {
       return res.status(400).json({ error: 'No document uploaded' });
     }
 
-    try {
-      const documentUrl = `/uploads/${req.file.filename}`;
-      await db.execute(
-        "UPDATE users SET verification_status = 'pending', verification_document = ? WHERE id = ?",
-        [documentUrl, userId]
-      );
-      
-      // Notify admins (all users with role 'admin')
-      const admins = await db.query("SELECT id FROM users WHERE role = 'admin'");
-      const farmer = await db.queryOne('SELECT name FROM users WHERE id = ?', [userId]);
-      
+    const documentUrl = `/uploads/${req.file.filename}`;
+    await db.execute(
+      "UPDATE users SET verification_status = 'pending', verification_document = ? WHERE id = ?",
+      [documentUrl, userId]
+    );
+    
+    // Notify admins (all users with role 'admin')
+    const admins = await db.query("SELECT id FROM users WHERE role = 'admin'");
+    const farmer = await db.queryOne('SELECT name FROM users WHERE id = ?', [userId]);
+    
+    if (admins && admins.length > 0) {
       for (const admin of admins) {
         await db.execute('INSERT INTO notifications (user_id, message) VALUES (?, ?)', 
-          [admin.id, `Farmer ${farmer.name} has submitted a verification document for review.`]);
+          [admin.id, `Farmer ${farmer?.name || 'Unknown'} has submitted a verification document for review.`]);
       }
-
-      res.json({ success: true, documentUrl });
-    } catch (err: any) {
-      console.error('Verification upload error:', err);
-      res.status(500).json({ error: 'Failed to submit verification' });
     }
-  });
+
+    res.json({ success: true, documentUrl });
+  }));
 
   /**
    * GET /api/admin/pending-verifications
    * Retrieves all farmers with a pending verification status
    */
-  app.get('/api/admin/pending-verifications', isAdmin, async (req, res) => {
+  app.get('/api/admin/pending-verifications', isAdmin, asyncHandler(async (req, res) => {
     const pendingFarmers = await db.query(`
       SELECT id, name, email, phone, address, verification_status, verification_document 
       FROM users 
       WHERE verification_status = 'pending' AND role = 'farmer'
     `);
     res.json(pendingFarmers);
-  });
+  }));
 
   /**
    * PUT /api/admin/verify-farmer/:id
    * Approves or rejects a farmer's verification request
    */
-  app.put('/api/admin/verify-farmer/:id', isAdmin, async (req, res) => {
+  app.put('/api/admin/verify-farmer/:id', isAdmin, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body; // 'verified' or 'rejected'
 
@@ -1520,31 +1517,42 @@ async function startServer() {
       return res.status(400).json({ error: 'Invalid verification status' });
     }
 
-    try {
-      await db.execute('UPDATE users SET verification_status = ? WHERE id = ?', [status, id]);
+    await db.execute('UPDATE users SET verification_status = ? WHERE id = ?', [status, id]);
+    
+    // Notify the farmer
+    const message = status === 'verified' 
+      ? 'Congratulations! Your account has been verified.' 
+      : 'Your verification request was rejected. Please review your documents and try again.';
       
-      // Notify the farmer
-      const message = status === 'verified' 
-        ? 'Congratulations! Your account has been verified.' 
-        : 'Your verification request was rejected. Please review your documents and try again.';
-        
-      await db.execute('INSERT INTO notifications (user_id, message) VALUES (?, ?)', [id, message]);
-      
-      res.json({ success: true });
-    } catch (err: any) {
-      console.error('Admin verification update error:', err);
-      res.status(500).json({ error: 'Failed to update verification status' });
+    await db.execute('INSERT INTO notifications (user_id, message) VALUES (?, ?)', [id, message]);
+    
+    // --- Farmer Verification Email Notification ---
+    const user = await db.queryOne('SELECT email, name FROM users WHERE id = ?', [id]);
+    if (user) {
+      const emailSubject = status === 'verified' ? 'Account Verified: EggMarket' : 'Verification Update: EggMarket';
+      const color = status === 'verified' ? "#10b981" : "#ef4444";
+      const emailBody = `
+        <h2 style="color: ${color};">Hello ${user.name}!</h2>
+        <p style="font-size: 16px; color: #374151;">${message}</p>
+        <div style="background-color: #f9fafb; border-left: 4px solid ${color}; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #374151;"><strong>Verification Status:</strong> <span style="text-transform: uppercase;">${status}</span></p>
+        </div>
+        ${status === 'verified' ? '<p>You can now start listing your products and receiving orders from the community.</p>' : '<p>Please log in to your dashboard to review the requirements and re-upload your documents if necessary.</p>'}
+      `;
+      sendEmailNotification(user.email, emailSubject, emailBody);
     }
-  });
+    
+    res.json({ success: true });
+  }));
 
   /**
    * PUT /api/notifications/:id/read
    * Marks a specific notification as read
    */
-  app.put('/api/notifications/:id/read', async (req, res) => {
+  app.put('/api/notifications/:id/read', asyncHandler(async (req, res) => {
     await db.execute('UPDATE notifications SET is_read = 1 WHERE id = ?', [req.params.id]);
     res.json({ success: true });
-  });
+  }));
 
   // --- Admin System & Statistics ---
 
@@ -1697,11 +1705,41 @@ async function startServer() {
    * PUT /api/admin/users/:id/status
    * Quickly toggles a user's account status (e.g., 'approved', 'suspended')
    */
-  app.put('/api/admin/users/:id/status', isAdmin, async (req, res) => {
+  app.put('/api/admin/users/:id/status', isAdmin, asyncHandler(async (req, res) => {
     const { status } = req.body;
-    await db.execute('UPDATE users SET status = ? WHERE id = ?', [status, req.params.id]);
+    const userId = req.params.id;
+    
+    await db.execute('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
+    
+    // Fetch user details for email
+    const user = await db.queryOne('SELECT email, name, role FROM users WHERE id = ?', [userId]);
+    
+    if (user) {
+      const emailSubject = `Account ${status.charAt(0).toUpperCase() + status.slice(1)}: EggMarket`;
+      let statusMsg = `Your account status has been updated to <strong>${status}</strong>.`;
+      let color = "#10b981";
+
+      if (status === 'suspended') {
+        statusMsg = "Your account has been <strong>suspended</strong>. Please contact support if you believe this is an error.";
+        color = "#ef4444";
+      } else if (status === 'approved' && user.role === 'farmer') {
+        statusMsg = "Congratulations! Your farmer account has been <strong>approved</strong>. You can now start listing your products and receiving orders.";
+        color = "#10b981";
+      }
+
+      const emailBody = `
+        <h2 style="color: ${color};">Hello ${user.name}!</h2>
+        <p style="font-size: 16px; color: #374151;">${statusMsg}</p>
+        <div style="background-color: #f9fafb; border-left: 4px solid ${color}; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #374151;"><strong>Current Status:</strong> <span style="text-transform: uppercase;">${status}</span></p>
+        </div>
+        <p>Log in to your account to see the changes.</p>
+      `;
+      sendEmailNotification(user.email, emailSubject, emailBody);
+    }
+
     res.json({ success: true });
-  });
+  }));
 
   /**
    * DELETE /api/admin/users/:id
@@ -2142,6 +2180,24 @@ async function startServer() {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
   }
+
+  // --- Global Error Handler ---
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('[GLOBAL ERROR HANDLER]:', err);
+    
+    // Check if headers already sent
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    const status = err.status || 500;
+    const message = err.message || 'Internal Server Error';
+    
+    res.status(status).json({
+      error: message,
+      status: status
+    });
+  });
 
   // Run migrations and data seeding
   // We do this without 'await' to ensure the server starts listening as fast as possible
