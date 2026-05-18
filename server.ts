@@ -10,6 +10,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
+import sgMail from '@sendgrid/mail';
 import multer from 'multer';
 import fs from 'fs';
 import cors from 'cors';
@@ -27,53 +28,52 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'eggmarket_default_secret';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL;
+const COMPANY_ADDRESS = process.env.COMPANY_ADDRESS || "Your Business Address, City, State, Zip";
 
 /**
- * Sends a notification email using the Gmail API
+ * Sends a notification email using SendGrid
  */
-async function sendGmailNotification(toEmail: string, subject: string, body: string) {
-  const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN;
-  const GMAIL_USER = process.env.GMAIL_USER; // The email address of the sender
+async function sendEmailNotification(toEmail: string, subject: string, body: string) {
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+  const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL;
   
-  if (!GMAIL_REFRESH_TOKEN || !GMAIL_USER || !GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    console.warn('[Gmail API] Missing credentials (GMAIL_USER or GMAIL_REFRESH_TOKEN). Email notification skipped.');
+  if (!SENDGRID_API_KEY || !SENDGRID_FROM_EMAIL) {
+    console.warn('[SendGrid] Missing credentials (SENDGRID_API_KEY or SENDGRID_FROM_EMAIL). Email notification skipped.');
+    // Fallback log for development
+    console.log(`[DEV EMAIL] To: ${toEmail}, Subject: ${subject}`);
     return;
   }
 
   try {
-    const oAuth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
-    oAuth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+    sgMail.setApiKey(SENDGRID_API_KEY);
+    
+    // Wrap the body in a professional layout with a legal footer
+    const fullBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
+        <div style="background-color: #10b981; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">EggMarket</h1>
+        </div>
+        <div style="padding: 30px; border: 1px solid #e5e7eb; border-top: none; line-height: 1.6;">
+          ${body}
+        </div>
+        <div style="padding: 20px; text-align: center; font-size: 12px; color: #6b7280;">
+          <p style="margin-bottom: 5px;">&copy; ${new Date().getFullYear()} EggMarket. All rights reserved.</p>
+          <p style="margin-bottom: 5px;">${COMPANY_ADDRESS}</p>
+          <p>You are receiving this because you have an account on EggMarket. If you no longer wish to receive these emails, please update your notification settings.</p>
+        </div>
+      </div>
+    `;
 
-    const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
-
-    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
-    const messageParts = [
-      `From: EggMarket <${GMAIL_USER}>`,
-      `To: ${toEmail}`,
-      'Content-Type: text/html; charset=utf-8',
-      'MIME-Version: 1.0',
-      `Subject: ${utf8Subject}`,
-      '',
-      body,
-    ];
-    const message = messageParts.join('\n');
-
-    // The body needs to be base64url encoded.
-    const encodedMessage = Buffer.from(message)
-      .toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-
-    await gmail.users.messages.send({
-      userId: 'me',
-      requestBody: {
-        raw: encodedMessage,
-      },
-    });
-    console.log(`[Gmail API] Email sent successfully to ${toEmail}`);
+    const msg = {
+      to: toEmail,
+      from: SENDGRID_FROM_EMAIL,
+      subject: subject,
+      html: fullBody,
+    };
+    await sgMail.send(msg);
+    console.log(`[SendGrid] Email sent successfully to ${toEmail}`);
   } catch (error) {
-    console.error('[Gmail API] Error sending email:', error);
+    console.error('[SendGrid] Error sending email:', error);
   }
 }
 
@@ -659,7 +659,7 @@ async function startServer() {
       </div>
     `;
     
-    await sendGmailNotification(user.email, subject, body);
+    await sendEmailNotification(user.email, subject, body);
 
     res.json({ 
       success: true, 
@@ -1252,7 +1252,7 @@ async function startServer() {
               <p style="color: #9ca3af; font-size: 12px; text-align: center;">This is an automated notification from EggMarket.</p>
             </div>
           `;
-          sendGmailNotification(customer.email, emailSubject, emailBody);
+          sendEmailNotification(customer.email, emailSubject, emailBody);
         }
       });
       res.json({ id: orderId });
@@ -1382,7 +1382,7 @@ async function startServer() {
       `;
       
       // Send asynchronously to avoid blocking the response
-      sendGmailNotification(orderData.email, emailSubject, emailBody);
+      sendEmailNotification(orderData.email, emailSubject, emailBody);
     }
     
     res.json({ success: true });
