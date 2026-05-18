@@ -21,7 +21,9 @@ import {
   Calendar,
   MapPin,
   ShieldCheck,
-  FileText
+  FileText,
+  Map as MapIcon,
+  ExternalLink
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -33,6 +35,7 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import MessagingSystem from '../components/MessagingSystem';
 import ConfirmationModal from '../components/ConfirmationModal';
+import CustomerLocationMap from '../components/CustomerLocationMap';
 import { Image as ImageIcon } from 'lucide-react';
 import { EGG_PLACEHOLDER } from '../constants';
 import jsPDF from 'jspdf';
@@ -80,6 +83,7 @@ export default function FarmerDashboard() {
   
   // Drill-down states
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderMap, setShowOrderMap] = useState<number | null>(null); // Order ID to show map for
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [siteSettings, setSiteSettings] = useState<any>({
     contact_address: '',
@@ -918,8 +922,9 @@ export default function FarmerDashboard() {
           </thead>
           <tbody className="divide-y divide-emerald-50">
             {orders.map(order => (
-              <tr key={order.id} className="hover:bg-emerald-50/20 transition-colors">
-                <td className="px-6 py-4 text-sm font-bold text-emerald-900">#{order.id}</td>
+              <React.Fragment key={order.id}>
+                <tr className="hover:bg-emerald-50/20 transition-colors">
+                  <td className="px-6 py-4 text-sm font-bold text-emerald-900">#{order.id}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
@@ -951,6 +956,13 @@ export default function FarmerDashboard() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
+                    <button 
+                      onClick={() => setShowOrderMap(showOrderMap === order.id ? null : order.id)}
+                      className={`p-2 rounded-lg transition-all ${showOrderMap === order.id ? 'bg-emerald-600 text-white' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                      title="View Location Map"
+                    >
+                      <MapIcon size={18} />
+                    </button>
                     <button 
                       onClick={() => {
                         setSelectedOrder(order);
@@ -1009,7 +1021,46 @@ export default function FarmerDashboard() {
                   </div>
                 </td>
               </tr>
-            ))}
+              {showOrderMap === order.id && order.customer_latitude && order.customer_longitude && (
+                <tr className="bg-emerald-50/20">
+                  <td colSpan={6} className="px-6 py-6 border-b border-emerald-100">
+                    <div className="max-w-3xl mx-auto space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-800">
+                          <MapIcon size={16} className="text-emerald-500" />
+                          <span className="text-sm font-bold uppercase tracking-wider">Delivery Location: {order.customer_name}</span>
+                        </div>
+                        <button 
+                          onClick={() => setShowOrderMap(null)}
+                          className="px-3 py-1 bg-white border border-red-100 text-red-500 text-[10px] font-bold rounded-lg hover:bg-red-50 transition-all uppercase"
+                        >
+                          Hide Map
+                        </button>
+                      </div>
+                      <CustomerLocationMap 
+                        latitude={order.customer_latitude}
+                        longitude={order.customer_longitude}
+                        customerName={order.customer_name || 'Customer'}
+                        address={order.customer_address || ''}
+                        purok={order.customer_purok}
+                        height="300px"
+                      />
+                      <div className="flex justify-center">
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${order.customer_latitude},${order.customer_longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-emerald-600 font-bold hover:underline bg-white px-4 py-2 rounded-xl border border-emerald-100 flex items-center gap-2 shadow-sm"
+                        >
+                          Navigate with Google Maps <ExternalLink size={14} />
+                        </a>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
           </tbody>
         </table>
         {orders.length === 0 && (
@@ -1045,7 +1096,17 @@ export default function FarmerDashboard() {
             <div className="flex justify-between items-end pt-4 border-t border-emerald-50">
               <div>
                 <p className="text-xs text-emerald-500 mb-1">Customer</p>
-                <p className="font-bold text-emerald-900">{order.customer_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-emerald-900">{order.customer_name}</p>
+                  {order.customer_latitude && order.customer_longitude && (
+                    <button 
+                      onClick={() => setShowOrderMap(showOrderMap === order.id ? null : order.id)}
+                      className={`p-1 rounded-md ${showOrderMap === order.id ? 'bg-emerald-600 text-white' : 'text-emerald-600 bg-emerald-50'}`}
+                    >
+                      <MapIcon size={12} />
+                    </button>
+                  )}
+                </div>
                 <button 
                   onClick={() => navigate(`/messages?farmerId=${order.customer_id}&farmerName=${encodeURIComponent(order.customer_name || '')}`)}
                   className="text-[10px] text-emerald-500 hover:text-emerald-700 flex items-center gap-1 mt-1"
@@ -1058,6 +1119,34 @@ export default function FarmerDashboard() {
                 <p className="text-xl font-display font-bold text-emerald-900">₱{Number(order.total_amount).toFixed(2)}</p>
               </div>
             </div>
+
+            {showOrderMap === order.id && order.customer_latitude && order.customer_longitude && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-2">
+                  <CustomerLocationMap 
+                    latitude={order.customer_latitude}
+                    longitude={order.customer_longitude}
+                    customerName={order.customer_name || 'Customer'}
+                    address={order.customer_address || ''}
+                    purok={order.customer_purok}
+                    height="180px"
+                  />
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${order.customer_latitude},${order.customer_longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 text-[10px] text-emerald-600 font-bold mt-2 hover:bg-emerald-50 py-1.5 rounded-lg border border-emerald-100 transition-all"
+                  >
+                    Open in Google Maps <MapPin size={10} />
+                  </a>
+                </div>
+              </motion.div>
+            )}
 
             <div className="flex gap-2 pt-2">
               <button 
@@ -1701,12 +1790,27 @@ export default function FarmerDashboard() {
                       <h4 className="font-bold text-emerald-900">Customer</h4>
                       <p className="text-sm text-emerald-600">{selectedOrder.customer_name}</p>
                       {(selectedOrder.customer_address || selectedOrder.customer_purok) && (
-                        <div className="mt-2">
+                        <div className="mt-2 space-y-3">
                           <p className="text-xs text-emerald-500 flex items-center gap-1">
                             <MapPin size={12} />
                             {selectedOrder.customer_purok && `Purok ${selectedOrder.customer_purok}, `}
                             {selectedOrder.customer_address}
                           </p>
+                          
+                          {selectedOrder.customer_latitude && selectedOrder.customer_longitude && (
+                            <div className="pt-2">
+                              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-2">Delivery Location Map</p>
+                              <CustomerLocationMap 
+                                latitude={selectedOrder.customer_latitude}
+                                longitude={selectedOrder.customer_longitude}
+                                customerName={selectedOrder.customer_name || 'Customer'}
+                                address={selectedOrder.customer_address || ''}
+                                purok={selectedOrder.customer_purok}
+                                height="220px"
+                              />
+                            </div>
+                          )}
+
                           <a 
                             href={selectedOrder.customer_latitude && selectedOrder.customer_longitude 
                               ? `https://www.google.com/maps/search/?api=1&query=${selectedOrder.customer_latitude},${selectedOrder.customer_longitude}`

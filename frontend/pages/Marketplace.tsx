@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Product, Category } from '../types';
-import { Search, Filter, ShoppingCart, Plus, Minus, CheckCircle2, MessageSquare, Star, X, MapPin, Map as MapIcon, LayoutGrid, Trash2 } from 'lucide-react';
+import { Search, Filter, ShoppingCart, Plus, Minus, CheckCircle2, MessageSquare, Star, X, MapPin, Map as MapIcon, LayoutGrid, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -58,6 +58,7 @@ export default function Marketplace() {
   
   // Confirmation and mobile UI states
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [productToRemove, setProductToRemove] = useState<{ id: number } | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   
@@ -167,8 +168,9 @@ export default function Marketplace() {
       navigate('/auth'); // Guest checkout not allowed
       return;
     }
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isCheckingOut) return;
 
+    setIsCheckingOut(true);
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -196,6 +198,8 @@ export default function Marketplace() {
     } catch (err) {
       console.error('Checkout error:', err);
       showNotify('An error occurred during checkout', 'error');
+    } finally {
+      setIsCheckingOut(false);
     }
   };
 
@@ -587,10 +591,17 @@ export default function Marketplace() {
                 </div>
                 <button 
                   onClick={handleCheckout}
-                  disabled={cart.length === 0}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white font-bold py-3 md:py-4 rounded-xl md:rounded-2xl shadow-lg shadow-emerald-100 transition-all active:scale-95 text-sm md:text-base"
+                  disabled={cart.length === 0 || isCheckingOut}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white font-bold py-3 md:py-4 rounded-xl md:rounded-2xl shadow-lg shadow-emerald-100 transition-all active:scale-95 text-sm md:text-base flex items-center justify-center gap-2"
                 >
-                  {user ? 'Checkout Now' : 'Login to Checkout'}
+                  {isCheckingOut ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      Processing...
+                    </>
+                  ) : (
+                    user ? 'Checkout Now' : 'Login to Checkout'
+                  )}
                 </button>
               </div>
             </div>

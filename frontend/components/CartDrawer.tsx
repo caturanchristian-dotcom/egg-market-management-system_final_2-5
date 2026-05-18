@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, X, Minus, Plus, Trash2 } from 'lucide-react';
+import { ShoppingCart, X, Minus, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -23,6 +23,7 @@ export default function CartDrawer() {
   const { showToast } = useNotifications();
   const navigate = useNavigate();
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [productToRemove, setProductToRemove] = useState<{ 
     id: number, 
     unit: 'tray'
@@ -38,8 +39,9 @@ export default function CartDrawer() {
       navigate('/auth');
       return;
     }
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isCheckingOut) return;
 
+    setIsCheckingOut(true);
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -61,9 +63,15 @@ export default function CartDrawer() {
         setIsCartOpen(false);
         showToast('Order Placed Successfully! Your eggs are being prepared by the farmer.', 'success');
         navigate('/customer/orders');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to place order', 'error');
       }
     } catch (err) {
       console.error('Checkout error:', err);
+      showToast('Connection error. Please try again.', 'error');
+    } finally {
+      setIsCheckingOut(false);
     }
   };
 
@@ -225,10 +233,17 @@ export default function CartDrawer() {
                   </button>
                   <button 
                     onClick={handleCheckout}
-                    disabled={cart.length === 0}
-                    className="py-4 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 shadow-lg shadow-emerald-100 transition-all"
+                    disabled={cart.length === 0 || isCheckingOut}
+                    className="py-4 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 shadow-lg shadow-emerald-100 transition-all flex items-center justify-center gap-2"
                   >
-                    {user ? 'Checkout' : 'Login to Checkout'}
+                    {isCheckingOut ? (
+                      <>
+                        <Loader2 className="animate-spin" size={18} />
+                        Processing...
+                      </>
+                    ) : (
+                      user ? 'Checkout' : 'Login to Checkout'
+                    )}
                   </button>
                 </div>
               </div>
