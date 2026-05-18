@@ -42,14 +42,12 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const EGG_GALLERY = [
-  { url: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&q=80&w=800', label: 'White Eggs' },
-  { url: 'https://images.unsplash.com/photo-1569254994521-ddbb54af5ae8?auto=format&fit=crop&q=80&w=800', label: 'Brown Eggs' },
-  { url: 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&q=80&w=800', label: 'Organic Eggs' },
-  { url: 'https://images.unsplash.com/photo-1598965402089-897ce52e8355?auto=format&fit=crop&q=80&w=800', label: 'Quail Eggs' },
-  { url: 'https://images.unsplash.com/photo-1522435230575-2355ef7171e1?auto=format&fit=crop&q=80&w=800', label: 'Duck Eggs' },
-  { url: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=800', label: 'Basket of Eggs' },
-  { url: 'https://images.unsplash.com/photo-1606055470705-32517776eeaf?auto=format&fit=crop&q=80&w=800', label: 'Farm Fresh' },
-  { url: 'https://images.unsplash.com/photo-1530513435-580a199ed9d5?auto=format&fit=crop&q=80&w=800', label: 'Chicken Farm' }
+  { url: 'https://gofflepoultry.com/wp-content/uploads/2020/05/JumboWhiteTray.png', label: 'White Eggs' },
+  { url: 'https://static.toiimg.com/photo/68523233.cms', label: 'Brown Eggs' },
+  { url: 'https://www.farm2forkdelivery.ca/cdn/shop/articles/Brown_eggs.jpg?v=1732734591', label: 'Organic Eggs' },
+  { url: 'https://ogden_images.s3.amazonaws.com/www.iamcountryside.com/images/sites/3/2023/02/13140616/AdobeStock_278091761-scaled-e1677612116333.jpeg', label: 'Quail Eggs' },
+  { url: 'https://cdn.pixabay.com/photo/2024/06/16/16/26/white-duck-8833754_960_720.jpg', label: 'Duck Eggs' },
+  { url: 'https://img.freepik.com/premium-photo/chicken-eggs-basket_641010-23955.jpg', label: 'Basket of Eggs' },
 ];
 
 /**
